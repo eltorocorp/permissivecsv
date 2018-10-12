@@ -74,6 +74,13 @@ func (s *Scanner) Scan() bool {
 	panic("not implemented")
 }
 
+// Peek returns the next record without advancing the Scanner. If the current
+// record is the last record of the file EOF will be true, otherwise EOF will be
+// false.
+func (s *Scanner) Peek() (nextRecord []string, EOF bool) {
+	panic("not implemented")
+}
+
 // Reset sets the Scanner back to the top of the file, and clears any summary
 // data that any previous calls to Scan may have generated.
 func (s *Scanner) Reset() {
@@ -85,16 +92,16 @@ func (s *Scanner) CurrentRecord() []string {
 	panic("not implemented")
 }
 
-// ScanSummary contains information about assumptions or alterations that were
-// made while scanning the input.
+// ScanSummary contains information about assumptions or alterations that have
+// been made via any calls to Scan.
 type ScanSummary struct {
 }
 
 // Summary returns a summary of information about the assumptions or alterations
-// that were made during the most recent scan. If the Scan method has not been
-// called, Summary will return nil. Summary will continue to collect data each
-// time Scan is called, and will only reset after the Reset method has been
-// called.
+// that were made during the most recent Scan. If the Scan method has not been
+// called, or Reset was called after the last call to Scan, Summary will return
+// nil. Summary will continue to collect data each time Scan is called, and will
+// only reset after the Reset method has been called.
 func (s *Scanner) Summary() *ScanSummary {
 	panic("not implemented")
 }
@@ -128,7 +135,7 @@ type Segment struct {
 // zero-based index representing the segment's placement relative to other
 // segments), the lower byte offset where the partition starts, the upper byte
 // offset where the partition ends, and the segment size, which is the
-// segment length in bytes.
+// partition length in bytes.
 //
 // If ignoreHeaderCheck is excluded or false (the default behavior), Partition
 // calls the HeaderCheck callback when reading the file. If HeaderCheck returns
@@ -140,9 +147,8 @@ type Segment struct {
 // such as os.File.Seek or bufio.Reader.Discard in situations where files are
 // need to be accessed in an asyncronous manner.
 //
-// Parition operates independent of all other Scanner methods. Thus, Partition
-// can be called at any time without impact on the Scan, Reset, or Summary
-// methods.
+// Partition implicitly calls Reset before reading the file, so using Scan
+// and Partition in conjunction could have undesired results.
 func (s *Scanner) Partition(n int, ignoreHeaderCheck ...bool) []Segment {
 	panic("not implemented")
 }
