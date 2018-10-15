@@ -4,9 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/eltorocorp/permissivecsv"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Scan(t *testing.T) {
@@ -26,7 +25,7 @@ func Test_Scan(t *testing.T) {
 			result: [][]string{[]string{"1", "2", "3"}},
 		},
 		{
-			name:  "unix records",
+			name:  "unix terminators",
 			input: "a,a,a\nb,b,b\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
@@ -35,7 +34,7 @@ func Test_Scan(t *testing.T) {
 			},
 		},
 		{
-			name:  "dos records",
+			name:  "DOS terminators",
 			input: "a,a,a\r\nb,b,b\r\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
@@ -53,12 +52,38 @@ func Test_Scan(t *testing.T) {
 			},
 		},
 		{
-			name:  "inverted dos terminator",
+			name:  "inverted DOS terminator",
 			input: "a,a,a\n\rb,b,b\n\rc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
 				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			name:  "dangling terminator",
+			input: "a,a,a\nb,b,b\nc,c,c\n",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"c", "c", "c"},
+				[]string{"", "", ""},
+			},
+		},
+		{
+			// permissivecsv presumes that the first record of a file is correct
+			// thus, if the first thing it encounters is a terminator, it
+			// concludes that the head record is just a single empty field.
+			// Since it assumes that is correct, it presumes each subsequent
+			// record has too many fields, and truncates them. This is the
+			// expected behavior of the system given the assumptions it makes.
+			name:  "loitering terminator",
+			input: "\na,a,a\nb,b,b\nc,c,c",
+			result: [][]string{
+				[]string{""},
+				[]string{"a"},
+				[]string{"b"},
+				[]string{"c"},
 			},
 		},
 	}

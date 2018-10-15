@@ -28,9 +28,11 @@ import (
 // length matches the desired value. Information about padded or truncated
 // records is made available via the Summary method once scanning is complete.
 type Scanner struct {
-	headerCheck   HeaderCheck
-	currentRecord []string
-	scanner       *bufio.Scanner
+	headerCheck        HeaderCheck
+	currentRecord      []string
+	scanner            *bufio.Scanner
+	expectedFieldCount int
+	recordsScanned     int64
 }
 
 // HeaderCheck is a function that evaluates whether or not the currentrecord is
@@ -112,16 +114,29 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // of the file. Once scanning is complete, subsequent scans will continue to
 // return false until the Reset method is called.
 func (s *Scanner) Scan() bool {
+	var record []string
 	scanResult := s.scanner.Scan()
 	text := s.scanner.Text()
 	if text == "" {
-		s.currentRecord = []string{""}
-		return scanResult
+		record = []string{""}
+	} else {
+		c := csv.NewReader(strings.NewReader(text))
+		// we disregard Read's error since we're behaving permissively.
+		record, _ = c.Read()
 	}
 
-	c := csv.NewReader(strings.NewReader(text))
-	// we disregard Read's error since we're behaving permissively.
-	record, _ := c.Read()
+	s.recordsScanned++
+	if s.recordsScanned == 1 {
+		s.expectedFieldCount = len(record)
+	}
+
+	if len(record) > s.expectedFieldCount {
+		record = record[:s.expectedFieldCount]
+	} else if len(record) < s.expectedFieldCount {
+		pad := make([]string, s.expectedFieldCount-len(record))
+		record = append(record, pad...)
+	}
+
 	s.currentRecord = record
 	return scanResult
 }
