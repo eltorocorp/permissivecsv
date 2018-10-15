@@ -2,7 +2,6 @@ package permissivecsv
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/csv"
 	"io"
 	"strings"
@@ -79,24 +78,54 @@ func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
 
 func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	const (
-		nl = 10
-		cr = 13
+		nl     = "\n"
+		cr     = "\r"
+		dos    = "\r\n"
+		invdos = "\n\r"
 	)
+	str := string(data)
+	DOSIndex := strings.Index(str, dos)
+	invertedDOSIndex := strings.Index(str, invdos)
+	newlineIndex := strings.Index(str, nl)
+	carriageReturnIndex := strings.Index(str, cr)
 
-	i := strings.Index(string(data), "\n\r")
-	if i != -1 {
-		advance = i + 2
-		token = data[:i+1]
+	nearestTerminator := -1
+
+	if invertedDOSIndex != -1 &&
+		newlineIndex == invertedDOSIndex &&
+		carriageReturnIndex > newlineIndex {
+		nearestTerminator = invertedDOSIndex
+	}
+
+	if DOSIndex != -1 &&
+		carriageReturnIndex == DOSIndex &&
+		newlineIndex > carriageReturnIndex {
+		if nearestTerminator == -1 {
+			nearestTerminator = DOSIndex
+		} else if DOSIndex < nearestTerminator {
+			nearestTerminator = DOSIndex
+		}
+	}
+
+	if nearestTerminator != -1 {
+		advance = nearestTerminator + 2
+		token = data[:nearestTerminator+1]
 		return
 	}
 
-	i = bytes.IndexByte(data, nl)
-	if i == -1 {
-		i = bytes.IndexByte(data, cr)
+	if newlineIndex != -1 {
+		nearestTerminator = newlineIndex
 	}
-	if i != -1 {
-		advance = i + 1
-		token = data[:i]
+
+	if carriageReturnIndex != -1 {
+		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
+			nearestTerminator = carriageReturnIndex
+		}
+	}
+
+	if nearestTerminator != -1 {
+		advance = nearestTerminator + 1
+		token = data[:nearestTerminator+1]
 		return
 	}
 
@@ -137,6 +166,14 @@ func (s *Scanner) Scan() bool {
 		record = append(record, pad...)
 	}
 
+	// See "loitering terminator" test. If the initial value in a file is a
+	// terminator, the Splitter may return nil data. In cases where the record
+	// (for any reason) ends up with zero capacity (nil), we return an empty
+	// slice with capacity 1 instead. This ensures the scanner always returns
+	// an empty slice, rather than a nil slice if a record contains no fields.
+	if cap(record) == 0 {
+		record = make([]string, 0, 1)
+	}
 	s.currentRecord = record
 	return scanResult
 }
