@@ -16,7 +16,7 @@ func IndexNonQuoted(s, substr string) int {
 		return -1
 	}
 
-	reQuoted := regexp.MustCompile("\"" + substr + "\"")
+	reQuoted := regexp.MustCompile("\".*" + substr + ".*\"")
 	matchesQuoted := reQuoted.FindAllStringIndex(s, -1)
 
 	if len(matchesQuoted) == 0 {
@@ -31,6 +31,16 @@ func IndexNonQuoted(s, substr string) int {
 		matchesQuoted[i][0]++
 		matchesQuoted[i][1]--
 	}
-	lastQuotedIndex := matchesQuoted[len(matchesQuoted)-1][0]
-	return matches[lastQuotedIndex-1][0]
+
+	for i := 0; i < len(matches); i++ {
+		for q := 0; q < len(matchesQuoted); q++ {
+			if matches[i][0] < matchesQuoted[q][0] && matches[i][1] < matchesQuoted[q][1] ||
+				matches[i][0] > matchesQuoted[q][0] && matches[i][1] > matchesQuoted[q][1] {
+				return matches[i][0]
+			}
+		}
+	}
+
+	return -1
+
 }

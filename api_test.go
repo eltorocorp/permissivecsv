@@ -127,7 +127,7 @@ func Test_Scan(t *testing.T) {
 			},
 		},
 		{
-			// permissivecsv igores terminators that are quoted
+			// permissivecsv ignores terminators that are quoted
 			name:  "ignore quoted",
 			input: "a,a,a\n\"\n\"b,b,b\nc,c,c",
 			result: [][]string{

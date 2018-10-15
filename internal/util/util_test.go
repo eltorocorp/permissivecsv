@@ -21,22 +21,46 @@ func Test_IndexNonQuoted(t *testing.T) {
 			expectedIndex: -1,
 		},
 		{
-			name:          "non-quoted found",
+			name:          "found if no quoted",
 			s:             "abc",
 			substr:        "bc",
 			expectedIndex: 1,
 		},
 		{
-			name:          "non-quote found with quoted",
+			name:          "found if quoted first",
 			s:             "a\"bc\"bc",
 			substr:        "bc",
 			expectedIndex: 5,
 		},
 		{
-			name:          "non-quote not found if only quoted",
+			name:          "found if quoted second",
+			s:             "abc\"bc\"",
+			substr:        "bc",
+			expectedIndex: 1,
+		},
+		{
+			name:          "not found if only quoted",
 			s:             "a\"bc\"",
 			substr:        "bc",
 			expectedIndex: -1,
+		},
+		{
+			name:          "deep substr",
+			s:             "\"bcbcbc\"bc",
+			substr:        "bc",
+			expectedIndex: 8,
+		},
+		{
+			name:          "special characters are handled",
+			s:             "\"*\"*",
+			substr:        "*",
+			expectedIndex: 3,
+		},
+		{
+			name:          "newlines ok",
+			s:             "\"\n\"b,b,b\nc,c,c",
+			substr:        "\n",
+			expectedIndex: 8,
 		},
 	}
 
