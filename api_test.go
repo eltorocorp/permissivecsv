@@ -4,9 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/eltorocorp/permissivecsv"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_Scan(t *testing.T) {
@@ -125,6 +124,16 @@ func Test_Scan(t *testing.T) {
 				[]string{"d", "d"},
 				[]string{"e", "e"},
 				[]string{"f", "f"},
+			},
+		},
+		{
+			// permissivecsv igores terminators that are quoted
+			name:  "ignore quoted",
+			input: "a,a,a\n\"\n\"b,b,b\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"\"\n\"b", "b", "b"},
+				[]string{"c", "c", "c"},
 			},
 		},
 	}

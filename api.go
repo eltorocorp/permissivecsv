@@ -5,6 +5,8 @@ import (
 	"encoding/csv"
 	"io"
 	"strings"
+
+	"github.com/eltorocorp/permissivecsv/internal/util"
 )
 
 // Scanner provides an interface for permissively reading CSV input. Successive
@@ -84,10 +86,10 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 		invdos = "\n\r"
 	)
 	str := string(data)
-	DOSIndex := strings.Index(str, dos)
-	invertedDOSIndex := strings.Index(str, invdos)
-	newlineIndex := strings.Index(str, nl)
-	carriageReturnIndex := strings.Index(str, cr)
+	DOSIndex := util.IndexNonQuoted(str, dos)
+	invertedDOSIndex := util.IndexNonQuoted(str, invdos)
+	newlineIndex := util.IndexNonQuoted(str, nl)
+	carriageReturnIndex := util.IndexNonQuoted(str, cr)
 
 	nearestTerminator := -1
 
