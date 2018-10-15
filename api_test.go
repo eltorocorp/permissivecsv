@@ -80,18 +80,18 @@ func Test_Scan(t *testing.T) {
 		{
 			// permissivecsv presumes that the first record of a file is correct
 			// thus, if the first thing it encounters is a terminator, it
-			// concludes that the head record simply contains zero fields.
+			// concludes that the head record contains a single empty field.
 			// Since it assumes that is correct, it presumes each subsequent
-			// record should also have zero fields, and truncates them. This is
+			// record should also have one field, and truncates them. This is
 			// the expected behavior of the system given the assumptions it
 			// makes.
-			name:  "loitering terminator",
+			name:  "leading terminator",
 			input: "\na,a,a\nb,b,b\nc,c,c",
 			result: [][]string{
-				[]string{},
-				[]string{},
-				[]string{},
-				[]string{},
+				[]string{""},
+				[]string{"a"},
+				[]string{"b"},
+				[]string{"c"},
 			},
 		},
 		{
@@ -129,10 +129,10 @@ func Test_Scan(t *testing.T) {
 		{
 			// permissivecsv ignores terminators that are quoted
 			name:  "ignore quoted",
-			input: "a,a,a\n\"\n\"b,b,b\nc,c,c",
+			input: "a,a,a\n\"\n\",b,b\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
-				[]string{"\"\n\"b", "b", "b"},
+				[]string{"\n", "b", "b"},
 				[]string{"c", "c", "c"},
 			},
 		},

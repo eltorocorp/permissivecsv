@@ -111,7 +111,7 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 
 	if nearestTerminator != -1 {
 		advance = nearestTerminator + 2
-		token = data[:nearestTerminator+1]
+		token = data[:nearestTerminator]
 		return
 	}
 
@@ -127,7 +127,7 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 
 	if nearestTerminator != -1 {
 		advance = nearestTerminator + 1
-		token = data[:nearestTerminator+1]
+		token = data[:nearestTerminator]
 		return
 	}
 
@@ -148,12 +148,19 @@ func (s *Scanner) Scan() bool {
 	var record []string
 	scanResult := s.scanner.Scan()
 	text := s.scanner.Text()
+
 	if text == "" {
 		record = []string{""}
 	} else {
+		// we want to leverage csv.Reader for it's field parsing logic, but
+		// want to avoid its record parsing logic. So, we replace any instances
+		// of \n or \r with tokens to override the Readers standard record
+		// termination handling, then fix the tokens after the fact.
+		text = util.TokenizeTerminators(text)
 		c := csv.NewReader(strings.NewReader(text))
 		// we disregard Read's error since we're behaving permissively.
 		record, _ = c.Read()
+		record = util.ResetTerminatorTokens(record)
 	}
 
 	s.recordsScanned++

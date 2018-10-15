@@ -2,6 +2,7 @@ package util
 
 import (
 	"regexp"
+	"strings"
 )
 
 // IndexNonQuoted returns the index of the first non-quoted occurence of
@@ -43,4 +44,27 @@ func IndexNonQuoted(s, substr string) int {
 
 	return -1
 
+}
+
+const (
+	tokenNL = "LINEFEED7540c64c"
+	tokenCR = "CARRIAGERETURNa1cde9f4"
+)
+
+// TokenizeTerminators replaces newline and carriage return runes with tokens.
+// This can be used as a text preprocessor to override default csv.Reader
+// record termination handling.
+func TokenizeTerminators(s string) string {
+	s = strings.Replace(s, "\n", tokenNL, -1)
+	return strings.Replace(s, "\r", tokenCR, -1)
+}
+
+// ResetTerminatorTokens replaces newline and carriage return tokens with
+// their original runes. This is the inverse of TokenizeTerminators.
+func ResetTerminatorTokens(ss []string) []string {
+	for i, s := range ss {
+		s = strings.Replace(s, tokenNL, "\n", -1)
+		ss[i] = strings.Replace(s, tokenCR, "\r", -1)
+	}
+	return ss
 }
