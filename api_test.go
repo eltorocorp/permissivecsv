@@ -136,6 +136,38 @@ func Test_Scan(t *testing.T) {
 				[]string{"c", "c", "c"},
 			},
 		},
+		{
+			// permissivecsv will nullify the values for all of a record's
+			// fields if it encounters a lazy quote. This is the most
+			// consistent way to represent data that has been corrupted in this
+			// manner. permissivecsv's handling of lazy quotes differs from
+			// the stdlib's csv.Reader. csv.Reader will concatenate all of a
+			// record's data into a single field if it encounters an unpaired
+			// quote. This results in a variation of data output per record that
+			// encounters this issue. permissivecsv instead blanks the data
+			// for the bad record, and reports the issue via Summary.
+			// This reduces the number of data variants output by the Scanner,
+			// while allowing the caller to still handle issues as they see fit.
+			name:  "lazy quotes",
+			input: "a,a,a\n\"b\"b,b,b\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"", "", ""},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// permissivecsv handles extraneous quotes the same way that it
+			// handles lazy quotes, by nullifying the field values of the
+			// affected record.
+			name:  "extraneous quote",
+			input: "a,a,a\nb\"\"\"b,b,b\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"", "", ""},
+				[]string{"c", "c", "c"},
+			},
+		},
 	}
 
 	for _, test := range tests {

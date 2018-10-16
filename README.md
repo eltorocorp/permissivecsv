@@ -20,6 +20,27 @@ For all subsequent records:
  - If the number of fields is less than expected, blank fields are appended to the result.
  - If the number of fields is more than expected, the the record is truncated.
 
+Botched Quote Handling
+----------------------
+PermissiveCSV handles two common forms of malformed quotes.
+ - Lazy quotes `"grib"flar,foo`
+ - Extraneous quotes `grib,"flar,foo`
+
+Lazy and Extraneous quotes are handled similarly PermissiveCSV. In either
+of these conditions, PermissiveCSV will return a record that contains empty
+fields. See [Inconsistent Field Handling]() for information about how the
+number of fields is deduced.
+
+PermissiveCSV differs from how the standard library `csv.Reader` handles quote
+errors. If lazy quotes is enabled, `csv.Reader` will push all of the data for
+the botched record into a single field. PermissiveCSV instead returns empty
+fields. This ensures that the data returned for records with malformed quotes is
+as consistent as possible across all records who share the same issue. When
+PermissiveCSV encounters a malformed quote, that encounter, along with the
+original data, is made immediately available via the Summary method. This
+reinforces the Summary method as the central source for identifying and acting
+upon assumptions that PermissiveCSV has while scanning a file.
+
 Header Detection
 ----------------
 PermissiveCSV contains three header detection modes.

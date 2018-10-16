@@ -159,7 +159,11 @@ func (s *Scanner) Scan() bool {
 		text = util.TokenizeTerminators(text)
 		c := csv.NewReader(strings.NewReader(text))
 		// we disregard Read's error since we're behaving permissively.
-		record, _ = c.Read()
+		var err error
+		record, err = c.Read()
+		if err != nil {
+			record = []string{}
+		}
 		record = util.ResetTerminatorTokens(record)
 	}
 
