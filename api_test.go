@@ -186,32 +186,32 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 
 func Test_NextRecord(t *testing.T) {
 	tests := []struct {
-		name          string
-		data          string
-		numberOfScans int
-		expNextRecord []string
-		expEOF        bool
+		name           string
+		data           string
+		numberOfScans  int
+		expNextRecords [][]string
+		expEOFs        []bool
 	}{
 		{
-			name:          "no records",
-			data:          "",
-			numberOfScans: 1,
-			expNextRecord: nil,
-			expEOF:        true,
+			name:           "no records",
+			data:           "",
+			numberOfScans:  1,
+			expNextRecords: [][]string{},
+			expEOFs:        []bool{true},
 		},
 		{
-			name:          "single record",
-			data:          "a,b,c",
-			numberOfScans: 1,
-			expNextRecord: nil,
-			expEOF:        true,
+			name:           "single record",
+			data:           "a,b,c",
+			numberOfScans:  2,
+			expNextRecords: [][]string{},
+			expEOFs:        []bool{true, true},
 		},
 		{
-			name:          "multiple records initial scan",
-			data:          "a,b\nc,d\ne,f",
-			numberOfScans: 1,
-			expNextRecord: []string{"c", "d"},
-			expEOF:        false,
+			name:           "multiple records initial scan",
+			data:           "a,b\nc,d\ne,f",
+			numberOfScans:  3,
+			expNextRecords: [][]string{[]string{"c", "d"}, []string{"e", "f"}, []string{}},
+			expEOFs:        []bool{false, false, true},
 		},
 	}
 
@@ -221,10 +221,14 @@ func Test_NextRecord(t *testing.T) {
 			s := permissivecsv.NewScanner(r, permissivecsv.HeaderCheckAssumeNoHeader)
 			for n := 0; n < test.numberOfScans; n++ {
 				s.Scan()
+				nextRecord, EOF := s.NextRecord()
+				if len(test.expNextRecords) == 0 {
+					assert.Nil(t, nextRecord, "expected nextRecord to be nil")
+				} else {
+					assert.ElementsMatch(t, test.expNextRecords[n], nextRecord, "incorrect nextRecord")
+				}
+				assert.Equal(t, test.expEOFs[n], EOF, "incorrect EOF")
 			}
-			nextRecord, EOF := s.NextRecord()
-			assert.ElementsMatch(t, test.expNextRecord, nextRecord, "incorrect nextRecord")
-			assert.Equal(t, test.expEOF, EOF, "incorrect EOF")
 		}
 		t.Run(test.name, testFn)
 	}

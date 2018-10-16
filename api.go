@@ -148,6 +148,9 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // of the file. Once scanning is complete, subsequent scans will continue to
 // return false until the Reset method is called.
 func (s *Scanner) Scan() bool {
+	if s.eof {
+		return s.eof
+	}
 	var more bool
 	if s.recordsScanned == 0 {
 		more = s.scan()
@@ -225,6 +228,9 @@ func (s *Scanner) scan() bool {
 // record is the last record of the file EOF will be true, otherwise EOF will be
 // false.
 func (s *Scanner) NextRecord() (nextRecord []string, EOF bool) {
+	if s.eof {
+		return nil, s.eof
+	}
 	return s.relativeNextRecord, s.eof
 }
 
