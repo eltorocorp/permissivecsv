@@ -149,7 +149,7 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // return false until the Reset method is called.
 func (s *Scanner) Scan() bool {
 	if s.eof {
-		return s.eof
+		return false
 	}
 	var more bool
 	if s.recordsScanned == 0 {
@@ -157,24 +157,24 @@ func (s *Scanner) Scan() bool {
 		s.relativeCurrentRecord = s.absoluteCurrentRecord
 		if !more {
 			s.eof = true
-			return s.eof
+			return true
 		}
 
 		more = s.scan()
 		if more {
 			s.relativeNextRecord = s.absoluteCurrentRecord
 			s.eof = false
-			return s.eof
+			return true
 		}
 
 		s.eof = true
-		return s.eof
+		return true
 	}
 	more = s.scan()
 	s.relativeCurrentRecord = s.relativeNextRecord
 	s.relativeNextRecord = s.absoluteCurrentRecord
 	s.eof = !more
-	return s.eof
+	return true
 }
 
 func (s *Scanner) scan() bool {

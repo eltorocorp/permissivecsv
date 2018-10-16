@@ -223,6 +223,10 @@ func Test_CurrentRecordNextRecord(t *testing.T) {
 
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
+			if len(test.expEOFs) != test.numberOfScans {
+				panic("Mismatch in test expectations.")
+			}
+
 			r := strings.NewReader(test.data)
 			s := permissivecsv.NewScanner(r, permissivecsv.HeaderCheckAssumeNoHeader)
 			for n := 0; n < test.numberOfScans; n++ {
