@@ -199,6 +199,20 @@ func Test_NextRecord(t *testing.T) {
 			expNextRecord: nil,
 			expEOF:        true,
 		},
+		{
+			name:          "single record",
+			data:          "a,b,c",
+			numberOfScans: 1,
+			expNextRecord: nil,
+			expEOF:        true,
+		},
+		{
+			name:          "multiple records initial scan",
+			data:          "a,b\nc,d\ne,f",
+			numberOfScans: 1,
+			expNextRecord: []string{"c", "d"},
+			expEOF:        false,
+		},
 	}
 
 	for _, test := range tests {
