@@ -195,7 +195,7 @@ func (s *Scanner) Scan() bool {
 // record is the last record of the file EOF will be true, otherwise EOF will be
 // false.
 func (s *Scanner) NextRecord() (nextRecord []string, EOF bool) {
-	panic("not implemented")
+	return nil, true
 }
 
 // Reset sets the Scanner back to the top of the file, and clears any summary

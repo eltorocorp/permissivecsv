@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Scan(t *testing.T) {
+func Test_ScanAndCurrentRecord(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  string
@@ -179,6 +179,38 @@ func Test_Scan(t *testing.T) {
 				result = append(result, s.CurrentRecord())
 			}
 			assert.Equal(t, test.result, result)
+		}
+		t.Run(test.name, testFn)
+	}
+}
+
+func Test_NextRecord(t *testing.T) {
+	tests := []struct {
+		name          string
+		data          string
+		numberOfScans int
+		expNextRecord []string
+		expEOF        bool
+	}{
+		{
+			name:          "no records",
+			data:          "",
+			numberOfScans: 1,
+			expNextRecord: nil,
+			expEOF:        true,
+		},
+	}
+
+	for _, test := range tests {
+		testFn := func(t *testing.T) {
+			r := strings.NewReader(test.data)
+			s := permissivecsv.NewScanner(r, permissivecsv.HeaderCheckAssumeNoHeader)
+			for n := 0; n < test.numberOfScans; n++ {
+				s.Scan()
+			}
+			nextRecord, EOF := s.NextRecord()
+			assert.ElementsMatch(t, test.expNextRecord, nextRecord, "incorrect nextRecord")
+			assert.Equal(t, test.expEOF, EOF, "incorrect EOF")
 		}
 		t.Run(test.name, testFn)
 	}
