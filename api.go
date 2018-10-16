@@ -258,9 +258,98 @@ func (s *Scanner) CurrentRecord() []string {
 	return s.relativeCurrentRecord
 }
 
+// AlterationType represents various changes that the Scanner might make to
+// a record while reading a file.
+type AlterationType string
+
+const (
+	// AlterationPadded means that empty fields were added to the record in
+	// order to get its length to match the expected length.
+	AlterationPadded AlterationType = "Padded"
+
+	// AlterationTruncated means that fields at the end of the record were
+	// removed in order to get its length to match the expected length.
+	AlterationTruncated AlterationType = "Truncated"
+
+	// AlterationLazyQuote means that the fields were nullified because lazy
+	// quotes were encountered.
+	AlterationLazyQuote AlterationType = "LazyQuotes"
+
+	// AlterationExtraneousQuote means that fields were nullified because
+	// extraneous quotes were encountered.
+	AlterationExtraneousQuote AlterationType = "ExtraneosQuotes"
+
+	// AlterationReaderError means that the underlaying io.Reader reported an
+	// error while suppliying data. The Scanner was unable to proceed any
+	// further, and the value for this record may be incorrect.
+	AlterationReaderError AlterationType = "ReaderError"
+)
+
+// Observation contains information about a record that was altered by the
+// Scanner.
+type Observation struct {
+	// RecordIndex is the index position of the record within the file.
+	RecordIndex string
+
+	// Record is a reference to the record that was altered and returned via
+	// Scanner.
+	Record *[]string
+
+	// OriginalRecord is a text dump of the original, unaltered record.
+	OriginalRecord string
+
+	// Alterations is a list of changes that were applied to the record to get
+	// it into a consistent shape.
+	Alterations []AlterationType
+}
+
+// TerminatorStats contains a record of how many of each record
+// terminator have been encountered in the file.
+type TerminatorStats struct {
+	// LFCount is the number of line feed (`\n`) terminations that have been
+	// encountered. This is the standard unix stype record termination.
+	LFCount int64
+
+	// CRLFCount is the number of CRLF ('\r\n`) terminations that have been
+	// encountered. This is the standard DOS style record termination.
+	CRLFCount int64
+
+	// CRCount is the number of carriage return (`\r`) terminations that
+	// have been encountered. This is a non-standard termination type that
+	// the Scanner will detect and permit.
+	CRCount int64
+
+	// LFCRCount is the number of LFCR (`\n\r`) terminations that have been
+	// encountered. This is a non-standard termination type that the Scanner
+	// will detect and permit. In this library, this may also be referred to as
+	// the "inverted DOS" termination.
+	LFCRCount int64
+}
+
 // ScanSummary contains information about assumptions or alterations that have
 // been made via any calls to Scan.
 type ScanSummary struct {
+	// RecordsScanned includes the total number of records scanned thus far.
+	RecordsScanned int64
+
+	// RecordsAltered includes the total number of records that have been
+	// altered thus far.
+	RecordsAltered int64
+
+	// Observations includes a list of all records that have been altered.
+	Observations []*Observation
+
+	// TerminatorStats provides information about which terminators were
+	// encounted within the file.
+	TerminatorStats *TerminatorStats
+
+	// If the underlaying io.Reader returns an error, which has prevented
+	// the Scanner from proceeding, that error be reported here.
+	Err error
+}
+
+func (s *Scanner) updateScanSummary(terminator string, readerError error, observations ...*Observation) {
+
 }
 
 // Summary returns a summary of information about the assumptions or alterations
