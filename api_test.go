@@ -184,11 +184,12 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 	}
 }
 
-func Test_NextRecord(t *testing.T) {
+func Test_CurrentRecordNextRecord(t *testing.T) {
 	tests := []struct {
 		name           string
 		data           string
 		numberOfScans  int
+		expCurrRecords [][]string
 		expNextRecords [][]string
 		expEOFs        []bool
 	}{
@@ -196,13 +197,17 @@ func Test_NextRecord(t *testing.T) {
 			name:           "no records",
 			data:           "",
 			numberOfScans:  1,
+			expCurrRecords: [][]string{[]string{""}},
 			expNextRecords: [][]string{},
 			expEOFs:        []bool{true},
 		},
 		{
+			// Subsequent calls to current record will continue to return the
+			// current record even when no further records are available.
 			name:           "single record",
 			data:           "a,b,c",
 			numberOfScans:  2,
+			expCurrRecords: [][]string{[]string{"a", "b", "c"}, []string{"a", "b", "c"}},
 			expNextRecords: [][]string{},
 			expEOFs:        []bool{true, true},
 		},
@@ -210,7 +215,8 @@ func Test_NextRecord(t *testing.T) {
 			name:           "multiple records initial scan",
 			data:           "a,b\nc,d\ne,f",
 			numberOfScans:  3,
-			expNextRecords: [][]string{[]string{"c", "d"}, []string{"e", "f"}, []string{}},
+			expCurrRecords: [][]string{[]string{"a", "b"}, []string{"c", "d"}, []string{"e", "f"}},
+			expNextRecords: [][]string{[]string{"c", "d"}, []string{"e", "f"}, nil},
 			expEOFs:        []bool{false, false, true},
 		},
 	}
@@ -222,6 +228,12 @@ func Test_NextRecord(t *testing.T) {
 			for n := 0; n < test.numberOfScans; n++ {
 				s.Scan()
 				nextRecord, EOF := s.NextRecord()
+				currentRecord := s.CurrentRecord()
+				if len(test.expCurrRecords) == 0 {
+					assert.Nil(t, currentRecord, "expected currentRecord to be nil")
+				} else {
+					assert.ElementsMatch(t, test.expCurrRecords[n], currentRecord, "incorrect currentRecord")
+				}
 				if len(test.expNextRecords) == 0 {
 					assert.Nil(t, nextRecord, "expected nextRecord to be nil")
 				} else {
