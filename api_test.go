@@ -1,12 +1,87 @@
 package permissivecsv_test
 
 import (
+	"errors"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/eltorocorp/permissivecsv"
 	"github.com/stretchr/testify/assert"
 )
+
+var ErrReader = errors.New("arbitrary reader error")
+
+// BadReader returns ErrReader on the first Read call.
+func BadReader(r io.Reader) io.Reader { return &badReader{r} }
+
+type badReader struct {
+	r io.Reader
+}
+
+func (r *badReader) Read(p []byte) (int, error) {
+	return 0, ErrReader
+}
+
+func Test_Reader(t *testing.T) {
+	tests := []struct {
+		name             string
+		reader           io.Reader
+		expScans         int
+		expCurrentRecord []string
+		expNextRecord    []string
+		expEOF           bool
+	}{
+		{
+			name:             "reader is nil",
+			reader:           nil,
+			expScans:         0,
+			expCurrentRecord: nil,
+			expNextRecord:    nil,
+			expEOF:           false,
+		},
+		{
+			name:             "reader is not nil",
+			reader:           strings.NewReader(""),
+			expScans:         1,
+			expCurrentRecord: []string{""},
+			expNextRecord:    nil,
+			expEOF:           true,
+		},
+		{
+			// If a reader reports an error, the scanner will stop after the
+			// current record. If possible, whichever value is loaded as the
+			// current record in the underlaying io.Scanner is returned, but
+			// this is typically an empty string. Since no more reads are
+			// possible, permissivecsv considers this the end of the file.
+			name:             "reader returns an error",
+			reader:           BadReader(strings.NewReader("a\nb\nc")),
+			expScans:         1,
+			expCurrentRecord: []string{""},
+			expNextRecord:    nil,
+			expEOF:           true,
+		},
+	}
+
+	for _, test := range tests {
+		testFn := func(t *testing.T) {
+			s := permissivecsv.NewScanner(test.reader, permissivecsv.HeaderCheckAssumeNoHeader)
+			n := 0
+			for s.Scan() {
+				n++
+			}
+			currentRecord := s.CurrentRecord()
+			nextRecord, eof := s.NextRecord()
+
+			assert.Equal(t, test.expScans, n, "expected scans is incorrect")
+			assert.ElementsMatch(t, test.expCurrentRecord, currentRecord, "current record is incorrect")
+			assert.ElementsMatch(t, test.expNextRecord, nextRecord, "next record is incorrect")
+			assert.Equal(t, test.expEOF, eof, "EOF is incorrect")
+		}
+		t.Run(test.name, testFn)
+	}
+
+}
 
 func Test_ScanAndCurrentRecord(t *testing.T) {
 	tests := []struct {

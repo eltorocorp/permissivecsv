@@ -34,6 +34,7 @@ type Scanner struct {
 	relativeNextRecord    []string
 	absoluteCurrentRecord []string
 	eof                   bool
+	reader                io.Reader
 	scanner               *bufio.Scanner
 	expectedFieldCount    int
 	recordsScanned        int64
@@ -77,6 +78,7 @@ func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
 	scanner.Split(recordSplitter)
 	return &Scanner{
 		headerCheck: headerCheck,
+		reader:      r,
 		scanner:     scanner,
 	}
 }
@@ -143,11 +145,23 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 	return
 }
 
+const (
+	// See docs about return handling for the Scan method.
+	alwaysTrue = true
+)
+
 // Scan advances the scanner to the next record, which will then be available
 // via the CurrentRecord method. Scan returns false when it reaches the end
 // of the file. Once scanning is complete, subsequent scans will continue to
 // return false until the Reset method is called.
+//
+// If the underlaying Reader is nil, Scan will return false on the first call.
+// In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
+	if s.reader == nil {
+		return false
+	}
+
 	if s.eof {
 		return false
 	}
@@ -157,24 +171,24 @@ func (s *Scanner) Scan() bool {
 		s.relativeCurrentRecord = s.absoluteCurrentRecord
 		if !more {
 			s.eof = true
-			return true
+			return alwaysTrue
 		}
 
 		more = s.scan()
 		if more {
 			s.relativeNextRecord = s.absoluteCurrentRecord
 			s.eof = false
-			return true
+			return alwaysTrue
 		}
 
 		s.eof = true
-		return true
+		return alwaysTrue
 	}
 	more = s.scan()
 	s.relativeCurrentRecord = s.relativeNextRecord
 	s.relativeNextRecord = s.absoluteCurrentRecord
 	s.eof = !more
-	return true
+	return alwaysTrue
 }
 
 func (s *Scanner) scan() bool {
@@ -185,13 +199,12 @@ func (s *Scanner) scan() bool {
 	if text == "" {
 		record = []string{""}
 	} else {
-		// we want to leverage csv.Reader for it's field parsing logic, but
+		// we want to leverage csv.Reader for its field parsing logic, but
 		// want to avoid its record parsing logic. So, we replace any instances
 		// of \n or \r with tokens to override the Readers standard record
-		// termination handling, then fix the tokens after the fact.
+		// termination handling; then fix the tokens after the fact.
 		text = util.TokenizeTerminators(text)
 		c := csv.NewReader(strings.NewReader(text))
-		// we disregard Read's error since we're behaving permissively.
 		var err error
 		record, err = c.Read()
 		if err != nil {
