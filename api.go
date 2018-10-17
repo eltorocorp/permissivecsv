@@ -46,6 +46,10 @@ type Scanner struct {
 	expectedFieldCount    int
 	recordsScanned        int64
 	scanSummary           *ScanSummary
+
+	absCurrentTerminator   string
+	absCurrentObservations []*Observation
+	absCurrentReaderError  error
 }
 
 // HeaderCheck is a function that evaluates whether or not the currentrecord is
@@ -82,17 +86,17 @@ var HeaderCheckAssumeHeaderExists HeaderCheck = func(i int, currentRecord, nextR
 
 // NewScanner returns a new Scanner to read from r.
 func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
+	permissiveScanner := new(Scanner)
 	scanner := bufio.NewScanner(r)
-	scanner.Split(recordSplitter)
-	return &Scanner{
-		headerCheck: headerCheck,
-		reader:      r,
-		scanner:     scanner,
-		scanSummary: new(ScanSummary),
-	}
+	scanner.Split(permissiveScanner.recordSplitter)
+	permissiveScanner.scanner = scanner
+	permissiveScanner.headerCheck = headerCheck
+	permissiveScanner.reader = r
+	permissiveScanner.scanSummary = new(ScanSummary)
+	return permissiveScanner
 }
 
-func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	str := string(data)
 	DOSIndex := util.IndexNonQuoted(str, dos)
 	invertedDOSIndex := util.IndexNonQuoted(str, invdos)
@@ -104,6 +108,7 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 	if invertedDOSIndex != -1 &&
 		newlineIndex == invertedDOSIndex &&
 		carriageReturnIndex > newlineIndex {
+		s.absCurrentTerminator = invdos
 		nearestTerminator = invertedDOSIndex
 	}
 
@@ -111,8 +116,10 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 		carriageReturnIndex == DOSIndex &&
 		newlineIndex > carriageReturnIndex {
 		if nearestTerminator == -1 {
+			s.absCurrentTerminator = dos
 			nearestTerminator = DOSIndex
 		} else if DOSIndex < nearestTerminator {
+			s.absCurrentTerminator = dos
 			nearestTerminator = DOSIndex
 		}
 	}
@@ -124,11 +131,13 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 	}
 
 	if newlineIndex != -1 {
+		s.absCurrentTerminator = nl
 		nearestTerminator = newlineIndex
 	}
 
 	if carriageReturnIndex != -1 {
 		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
+			s.absCurrentTerminator = cr
 			nearestTerminator = carriageReturnIndex
 		}
 	}
@@ -162,6 +171,12 @@ const (
 // In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
 	if s.reader == nil {
+		s.absCurrentObservations = append(s.absCurrentObservations, &Observation{
+			// we should be tracking the alterations not the observations, and flushing
+			// the alterations to the summary? What a huge ass mess. I don't think
+			// this is worth it.
+		})
+		panic("observe nil reader")
 		return false
 	}
 
@@ -171,6 +186,7 @@ func (s *Scanner) Scan() bool {
 	var more bool
 	if s.recordsScanned == 0 {
 		more = s.scan()
+		s.flushScanSummary()
 		s.relativeCurrentRecord = s.absoluteCurrentRecord
 		if !more {
 			s.eof = true
@@ -187,6 +203,7 @@ func (s *Scanner) Scan() bool {
 		s.eof = true
 		return alwaysTrue
 	}
+	s.flushScanSummary()
 	more = s.scan()
 	s.relativeCurrentRecord = s.relativeNextRecord
 	s.relativeNextRecord = s.absoluteCurrentRecord
@@ -198,6 +215,8 @@ func (s *Scanner) scan() bool {
 	var record []string
 	scanResult := s.scanner.Scan()
 	text := s.scanner.Text()
+
+	panic("observe a scanner error even though we don't necessarily let it halt")
 
 	if text == "" {
 		record = []string{""}
@@ -211,6 +230,8 @@ func (s *Scanner) scan() bool {
 		var err error
 		record, err = c.Read()
 		if err != nil {
+			panic("observe lazy quote error")
+			panic("observe extraneous quote error")
 			record = []string{}
 		}
 		record = util.ResetTerminatorTokens(record)
@@ -223,9 +244,11 @@ func (s *Scanner) scan() bool {
 
 	if len(record) > s.expectedFieldCount {
 		record = record[:s.expectedFieldCount]
+		panic("observe record truncation")
 	} else if len(record) < s.expectedFieldCount {
 		pad := make([]string, s.expectedFieldCount-len(record))
 		record = append(record, pad...)
+		panic("observe record padding")
 	}
 
 	// See "dangling terminator" test. If the initial value in a file is a
@@ -356,7 +379,9 @@ type ScanSummary struct {
 	Err error
 }
 
-func (s *Scanner) updateScanSummary(terminator string, readerError error, observations ...*Observation) {
+// flushScanSummary pushes scan summary data from the absolute current record
+// to the current summary instance.
+func (s *Scanner) flushScanSummary() {
 	if s.scanSummary == nil {
 		s.scanSummary = new(ScanSummary)
 	}
@@ -365,21 +390,20 @@ func (s *Scanner) updateScanSummary(terminator string, readerError error, observ
 		s.scanSummary.Observations = []*Observation{}
 	}
 
-	if len(observations) > 0 {
-		s.scanSummary.Observations = append(s.scanSummary.Observations, observations...)
+	if len(s.absCurrentObservations) > 0 {
+		s.scanSummary.Observations = append(s.scanSummary.Observations, s.absCurrentObservations...)
+		s.scanSummary.RecordsAltered++
 	}
-
-	s.scanSummary.RecordsAltered += int64(len(observations))
 
 	s.scanSummary.RecordsScanned++
 
-	s.scanSummary.Err = readerError
+	s.scanSummary.Err = s.absCurrentReaderError
 
 	if s.scanSummary.TerminatorStats == nil {
 		s.scanSummary.TerminatorStats = new(TerminatorStats)
 	}
 
-	switch terminator {
+	switch s.absCurrentTerminator {
 	case nl:
 		s.scanSummary.TerminatorStats.LFCount++
 	case cr:
