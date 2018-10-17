@@ -9,13 +9,6 @@ import (
 	"github.com/eltorocorp/permissivecsv/internal/util"
 )
 
-const (
-	nl     = "\n"
-	cr     = "\r"
-	dos    = "\r\n"
-	invdos = "\n\r"
-)
-
 // Scanner provides an interface for permissively reading CSV input. Successive
 // calls to the Scan method will step through the records of a file, skipping
 // terminator bytes between each record.
@@ -45,11 +38,6 @@ type Scanner struct {
 	scanner               *bufio.Scanner
 	expectedFieldCount    int
 	recordsScanned        int64
-	scanSummary           *ScanSummary
-
-	absCurrentTerminator   string
-	absCurrentObservations []*Observation
-	absCurrentReaderError  error
 }
 
 // HeaderCheck is a function that evaluates whether or not the currentrecord is
@@ -86,17 +74,22 @@ var HeaderCheckAssumeHeaderExists HeaderCheck = func(i int, currentRecord, nextR
 
 // NewScanner returns a new Scanner to read from r.
 func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
-	permissiveScanner := new(Scanner)
 	scanner := bufio.NewScanner(r)
-	scanner.Split(permissiveScanner.recordSplitter)
-	permissiveScanner.scanner = scanner
-	permissiveScanner.headerCheck = headerCheck
-	permissiveScanner.reader = r
-	permissiveScanner.scanSummary = new(ScanSummary)
-	return permissiveScanner
+	scanner.Split(recordSplitter)
+	return &Scanner{
+		headerCheck: headerCheck,
+		reader:      r,
+		scanner:     scanner,
+	}
 }
 
-func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	const (
+		nl     = "\n"
+		cr     = "\r"
+		dos    = "\r\n"
+		invdos = "\n\r"
+	)
 	str := string(data)
 	DOSIndex := util.IndexNonQuoted(str, dos)
 	invertedDOSIndex := util.IndexNonQuoted(str, invdos)
@@ -108,7 +101,6 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 	if invertedDOSIndex != -1 &&
 		newlineIndex == invertedDOSIndex &&
 		carriageReturnIndex > newlineIndex {
-		s.absCurrentTerminator = invdos
 		nearestTerminator = invertedDOSIndex
 	}
 
@@ -116,10 +108,8 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 		carriageReturnIndex == DOSIndex &&
 		newlineIndex > carriageReturnIndex {
 		if nearestTerminator == -1 {
-			s.absCurrentTerminator = dos
 			nearestTerminator = DOSIndex
 		} else if DOSIndex < nearestTerminator {
-			s.absCurrentTerminator = dos
 			nearestTerminator = DOSIndex
 		}
 	}
@@ -131,13 +121,11 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 	}
 
 	if newlineIndex != -1 {
-		s.absCurrentTerminator = nl
 		nearestTerminator = newlineIndex
 	}
 
 	if carriageReturnIndex != -1 {
 		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
-			s.absCurrentTerminator = cr
 			nearestTerminator = carriageReturnIndex
 		}
 	}
@@ -171,12 +159,6 @@ const (
 // In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
 	if s.reader == nil {
-		s.absCurrentObservations = append(s.absCurrentObservations, &Observation{
-			// we should be tracking the alterations not the observations, and flushing
-			// the alterations to the summary? What a huge ass mess. I don't think
-			// this is worth it.
-		})
-		panic("observe nil reader")
 		return false
 	}
 
@@ -186,7 +168,6 @@ func (s *Scanner) Scan() bool {
 	var more bool
 	if s.recordsScanned == 0 {
 		more = s.scan()
-		s.flushScanSummary()
 		s.relativeCurrentRecord = s.absoluteCurrentRecord
 		if !more {
 			s.eof = true
@@ -203,7 +184,6 @@ func (s *Scanner) Scan() bool {
 		s.eof = true
 		return alwaysTrue
 	}
-	s.flushScanSummary()
 	more = s.scan()
 	s.relativeCurrentRecord = s.relativeNextRecord
 	s.relativeNextRecord = s.absoluteCurrentRecord
@@ -215,8 +195,6 @@ func (s *Scanner) scan() bool {
 	var record []string
 	scanResult := s.scanner.Scan()
 	text := s.scanner.Text()
-
-	panic("observe a scanner error even though we don't necessarily let it halt")
 
 	if text == "" {
 		record = []string{""}
@@ -230,8 +208,6 @@ func (s *Scanner) scan() bool {
 		var err error
 		record, err = c.Read()
 		if err != nil {
-			panic("observe lazy quote error")
-			panic("observe extraneous quote error")
 			record = []string{}
 		}
 		record = util.ResetTerminatorTokens(record)
@@ -244,11 +220,9 @@ func (s *Scanner) scan() bool {
 
 	if len(record) > s.expectedFieldCount {
 		record = record[:s.expectedFieldCount]
-		panic("observe record truncation")
 	} else if len(record) < s.expectedFieldCount {
 		pad := make([]string, s.expectedFieldCount-len(record))
 		record = append(record, pad...)
-		panic("observe record padding")
 	}
 
 	// See "dangling terminator" test. If the initial value in a file is a
@@ -275,13 +249,8 @@ func (s *Scanner) NextRecord() (nextRecord []string, EOF bool) {
 
 // Reset sets the Scanner back to the top of the file, and clears any summary
 // data that any previous calls to Scan may have generated.
-// Since Scanner only requires a Reader, which only has a Read method, it is the
-// caller's responsibility to ensure that the reader used to instantiate this
-// scanner is closed, flushed, or otherwise reset as needed, prior to calling
-// Reset. Failing to reset the underlaying reader prior to calling Reset could
-// have unanticipated effects for subsequent calls to Scan.
 func (s *Scanner) Reset() {
-	s = NewScanner(s.reader, s.headerCheck)
+	panic("not implemented")
 }
 
 // CurrentRecord returns the most recent record generated by a call to Scan.
@@ -289,130 +258,9 @@ func (s *Scanner) CurrentRecord() []string {
 	return s.relativeCurrentRecord
 }
 
-// AlterationType represents various changes that the Scanner might make to
-// a record while reading a file.
-type AlterationType string
-
-const (
-	// AlterationPadded means that empty fields were added to the record in
-	// order to get its length to match the expected length.
-	AlterationPadded AlterationType = "Padded"
-
-	// AlterationTruncated means that fields at the end of the record were
-	// removed in order to get its length to match the expected length.
-	AlterationTruncated AlterationType = "Truncated"
-
-	// AlterationLazyQuote means that the fields were nullified because lazy
-	// quotes were encountered.
-	AlterationLazyQuote AlterationType = "LazyQuotes"
-
-	// AlterationExtraneousQuote means that fields were nullified because
-	// extraneous quotes were encountered.
-	AlterationExtraneousQuote AlterationType = "ExtraneosQuotes"
-
-	// AlterationReaderError means that the underlaying io.Reader reported an
-	// error while suppliying data. The Scanner was unable to proceed any
-	// further, and the value for this record may be incorrect.
-	AlterationReaderError AlterationType = "ReaderError"
-)
-
-// Observation contains information about a record that was altered by the
-// Scanner.
-type Observation struct {
-	// RecordIndex is the index position of the record within the file.
-	RecordIndex string
-
-	// Record is a reference to the record that was altered and returned via
-	// Scanner.
-	Record *[]string
-
-	// OriginalRecord is a text dump of the original, unaltered record.
-	OriginalRecord string
-
-	// Alterations is a list of changes that were applied to the record to get
-	// it into a consistent shape.
-	Alterations []AlterationType
-}
-
-// TerminatorStats contains a record of how many of each record
-// terminator have been encountered in the file.
-type TerminatorStats struct {
-	// LFCount is the number of line feed (`\n`) terminations that have been
-	// encountered. This is the standard unix stype record termination.
-	LFCount int64
-
-	// CRLFCount is the number of CRLF ('\r\n`) terminations that have been
-	// encountered. This is the standard DOS style record termination.
-	CRLFCount int64
-
-	// CRCount is the number of carriage return (`\r`) terminations that
-	// have been encountered. This is a non-standard termination type that
-	// the Scanner will detect and permit.
-	CRCount int64
-
-	// LFCRCount is the number of LFCR (`\n\r`) terminations that have been
-	// encountered. This is a non-standard termination type that the Scanner
-	// will detect and permit. In this library, this may also be referred to as
-	// the "inverted DOS" termination.
-	LFCRCount int64
-}
-
 // ScanSummary contains information about assumptions or alterations that have
 // been made via any calls to Scan.
 type ScanSummary struct {
-	// RecordsScanned includes the total number of records scanned thus far.
-	RecordsScanned int64
-
-	// RecordsAltered includes the total number of records that have been
-	// altered thus far.
-	RecordsAltered int64
-
-	// Observations includes a list of all records that have been altered.
-	Observations []*Observation
-
-	// TerminatorStats provides information about which terminators were
-	// encounted within the file.
-	TerminatorStats *TerminatorStats
-
-	// If the underlaying io.Reader returns an error, which has prevented
-	// the Scanner from proceeding, that error be reported here.
-	Err error
-}
-
-// flushScanSummary pushes scan summary data from the absolute current record
-// to the current summary instance.
-func (s *Scanner) flushScanSummary() {
-	if s.scanSummary == nil {
-		s.scanSummary = new(ScanSummary)
-	}
-
-	if s.scanSummary.Observations == nil {
-		s.scanSummary.Observations = []*Observation{}
-	}
-
-	if len(s.absCurrentObservations) > 0 {
-		s.scanSummary.Observations = append(s.scanSummary.Observations, s.absCurrentObservations...)
-		s.scanSummary.RecordsAltered++
-	}
-
-	s.scanSummary.RecordsScanned++
-
-	s.scanSummary.Err = s.absCurrentReaderError
-
-	if s.scanSummary.TerminatorStats == nil {
-		s.scanSummary.TerminatorStats = new(TerminatorStats)
-	}
-
-	switch s.absCurrentTerminator {
-	case nl:
-		s.scanSummary.TerminatorStats.LFCount++
-	case cr:
-		s.scanSummary.TerminatorStats.CRCount++
-	case dos:
-		s.scanSummary.TerminatorStats.CRLFCount++
-	case invdos:
-		s.scanSummary.TerminatorStats.LFCRCount++
-	}
 }
 
 // Summary returns a summary of information about the assumptions or alterations
@@ -421,7 +269,7 @@ func (s *Scanner) flushScanSummary() {
 // nil. Summary will continue to collect data each time Scan is called, and will
 // only reset after the Reset method has been called.
 func (s *Scanner) Summary() *ScanSummary {
-	return s.scanSummary
+	panic("not implemented")
 }
 
 // RecordIsHeader returns true if the current record has been identified as a

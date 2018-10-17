@@ -23,7 +23,7 @@ func (r *badReader) Read(p []byte) (int, error) {
 	return 0, ErrReader
 }
 
-func Test_CommonReaderIssues(t *testing.T) {
+func Test_Reader(t *testing.T) {
 	tests := []struct {
 		name             string
 		reader           io.Reader
@@ -323,17 +323,4 @@ func Test_CurrentRecordNextRecord(t *testing.T) {
 		}
 		t.Run(test.name, testFn)
 	}
-}
-
-func Test_SummaryAndReset(t *testing.T) {
-	// the last record is always returned after multiple calls
-	// the scanner returns to the first record when reset is called
-	// the summary is reset when reset is called
-	// the summary records if a record is truncated
-	// summary reports if a record is padded
-	// summary reports if lazy quotes are encountered
-	// summary reports if extraneous quotes are encountered
-	// summary reports if the underlaying reader is nil
-	// summary reports if the reader returned an error
-	// summary reports the number of records read, the number of records altered
 }
