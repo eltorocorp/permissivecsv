@@ -29,24 +29,18 @@ func Test_Reader(t *testing.T) {
 		reader           io.Reader
 		expScans         int
 		expCurrentRecord []string
-		expNextRecord    []string
-		expEOF           bool
 	}{
 		{
 			name:             "reader is nil",
 			reader:           nil,
 			expScans:         0,
 			expCurrentRecord: nil,
-			expNextRecord:    nil,
-			expEOF:           false,
 		},
 		{
 			name:             "reader is not nil",
 			reader:           strings.NewReader(""),
 			expScans:         1,
 			expCurrentRecord: []string{""},
-			expNextRecord:    nil,
-			expEOF:           true,
 		},
 		{
 			// If a reader reports an error, the scanner will stop after the
@@ -58,8 +52,6 @@ func Test_Reader(t *testing.T) {
 			reader:           BadReader(strings.NewReader("a\nb\nc")),
 			expScans:         1,
 			expCurrentRecord: []string{""},
-			expNextRecord:    nil,
-			expEOF:           true,
 		},
 	}
 
@@ -71,12 +63,8 @@ func Test_Reader(t *testing.T) {
 				n++
 			}
 			currentRecord := s.CurrentRecord()
-			nextRecord, eof := s.NextRecord()
-
 			assert.Equal(t, test.expScans, n, "expected scans is incorrect")
 			assert.ElementsMatch(t, test.expCurrentRecord, currentRecord, "current record is incorrect")
-			assert.ElementsMatch(t, test.expNextRecord, nextRecord, "next record is incorrect")
-			assert.Equal(t, test.expEOF, eof, "EOF is incorrect")
 		}
 		t.Run(test.name, testFn)
 	}
@@ -254,72 +242,6 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 				result = append(result, s.CurrentRecord())
 			}
 			assert.Equal(t, test.result, result)
-		}
-		t.Run(test.name, testFn)
-	}
-}
-
-func Test_CurrentRecordNextRecord(t *testing.T) {
-	tests := []struct {
-		name           string
-		data           string
-		numberOfScans  int
-		expCurrRecords [][]string
-		expNextRecords [][]string
-		expEOFs        []bool
-	}{
-		{
-			name:           "no records",
-			data:           "",
-			numberOfScans:  1,
-			expCurrRecords: [][]string{[]string{""}},
-			expNextRecords: [][]string{},
-			expEOFs:        []bool{true},
-		},
-		{
-			// Subsequent calls to current record will continue to return the
-			// current record even when no further records are available.
-			name:           "single record",
-			data:           "a,b,c",
-			numberOfScans:  2,
-			expCurrRecords: [][]string{[]string{"a", "b", "c"}, []string{"a", "b", "c"}},
-			expNextRecords: [][]string{},
-			expEOFs:        []bool{true, true},
-		},
-		{
-			name:           "multiple records initial scan",
-			data:           "a,b\nc,d\ne,f",
-			numberOfScans:  3,
-			expCurrRecords: [][]string{[]string{"a", "b"}, []string{"c", "d"}, []string{"e", "f"}},
-			expNextRecords: [][]string{[]string{"c", "d"}, []string{"e", "f"}, nil},
-			expEOFs:        []bool{false, false, true},
-		},
-	}
-
-	for _, test := range tests {
-		testFn := func(t *testing.T) {
-			if len(test.expEOFs) != test.numberOfScans {
-				panic("Mismatch in test expectations.")
-			}
-
-			r := strings.NewReader(test.data)
-			s := permissivecsv.NewScanner(r, permissivecsv.HeaderCheckAssumeNoHeader)
-			for n := 0; n < test.numberOfScans; n++ {
-				s.Scan()
-				nextRecord, EOF := s.NextRecord()
-				currentRecord := s.CurrentRecord()
-				if len(test.expCurrRecords) == 0 {
-					assert.Nil(t, currentRecord, "expected currentRecord to be nil")
-				} else {
-					assert.ElementsMatch(t, test.expCurrRecords[n], currentRecord, "incorrect currentRecord")
-				}
-				if len(test.expNextRecords) == 0 {
-					assert.Nil(t, nextRecord, "expected nextRecord to be nil")
-				} else {
-					assert.ElementsMatch(t, test.expNextRecords[n], nextRecord, "incorrect nextRecord")
-				}
-				assert.Equal(t, test.expEOFs[n], EOF, "incorrect EOF")
-			}
 		}
 		t.Run(test.name, testFn)
 	}
