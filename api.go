@@ -269,7 +269,7 @@ type ScanSummary struct {
 // nil. Summary will continue to collect data each time Scan is called, and will
 // only reset after the Reset method has been called.
 func (s *Scanner) Summary() *ScanSummary {
-	panic("not implemented")
+	return nil
 }
 
 // RecordIsHeader returns true if the current record has been identified as a

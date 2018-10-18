@@ -324,3 +324,46 @@ func Test_CurrentRecordNextRecord(t *testing.T) {
 		t.Run(test.name, testFn)
 	}
 }
+
+func Test_Summary(t *testing.T) {
+	tests := []struct {
+		name string
+		data string
+		// scanLimit caps the number of times the test fixture will
+		// call Scan. -1 will call Scan until it returns false.
+		scanLimit  int
+		expSummary *permissivecsv.ScanSummary
+	}{
+		{
+			name:       "summary initially nil",
+			data:       "a,b,c",
+			scanLimit:  0,
+			expSummary: nil,
+		},
+	}
+
+	for _, test := range tests {
+		testFn := func(t *testing.T) {
+			r := strings.NewReader(test.data)
+			s := permissivecsv.NewScanner(r, permissivecsv.HeaderCheckAssumeNoHeader)
+			n := 0
+			for {
+				n++
+				if test.scanLimit >= 0 && n >= test.scanLimit {
+					break
+				}
+				more := s.Scan()
+				if !more {
+					break
+				}
+			}
+			summary := s.Summary()
+			if test.expSummary == nil {
+				assert.Nil(t, summary)
+			} else {
+				assert.Equal(t, *test.expSummary, *summary)
+			}
+		}
+		t.Run(test.name, testFn)
+	}
+}
