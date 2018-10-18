@@ -11,7 +11,32 @@ Features
 
 Sloppy Terminator Support
 -------------------------
-PermissiveCSV will detect and read CSVs with either unix, DOS, (or a mixture of the two) record terminators.
+PermissiveCSV will detect and read CSVs with either unix (`\n`), DOS (`\r\n`), inverted DOS (`\n\r`), or carriage return (`\r\`)  record terminators. Furthermore, the terminator is permitted to be inconsistent from record to record.
+
+When scanning a search space for a terminator, PermissiveCSV will select the first non-quoted terminator it encounters using the following order:
+
+1) DOS (`\r\n`)
+1) Inverted DOS (`\n\r`)
+1) unix (`\n`)
+1) Carriage Return (`\r`)
+
+*Terminator evaluation order*
+
+ - PermissiveCSV doesn't make any a priori assumptions about a file-author's intent.
+   - Terminators are evaluated solely on the context of the current search space within a file. 
+   - To accomplish detection, terminators are evaluated first by length, then by priority within a length. 
+   - Terminators can vary in byte-length, and terminators can be composites of eachother (for instance, a DOS terminator is a composite of a unix terminator and a carriage return).
+- The search algorithm gives priority to longer terminators, to ensure that it does not mistakenly select a terminator which is actually a sub-element of a larger composite terminator
+  - Example: Selecting `\n` as the terminator, when the terminator was actually `\r\n` 
+- Within each terminator length, a priority order is utilized.
+  - Example: Between DOS and Inverted DOS, both of which have a length of two, DOS has priority. 
+  - Similarly, between unix and Carriage Return, both of which have a length of 1, unix has priority.
+
+*Ignoring Terminators*
+
+ - Terminators that fall anywhere inside a pair of double quotes are ignored. 
+ - Outside of double quotes, potential terminators are ignored only if a more likely terminator has been selected for the current record. 
+   - Example: If a potential record contains a carriage return and a newline separated by one or more other characters, the newline will be used as the terminator, and the carriage return will be ignored (even though it may not be quoted).
 
 Inconsistent Field Handling
 ----------------------------
@@ -54,11 +79,12 @@ Partitioning Support
 --------------------
 PermissiveCSV contains a partition method which takes a desired partition size, and returns a slice of byte offsets which represent the beginning of each partition. Partitioning is guaranteed to work properly even if the file contains a mixture of unix, and DOS terminators.
 
-Errorless Behavior
+"Errorless" Behavior
 ------------------
-PermissiveCSV is errorless. Because it is permissive, it will do everything it can to return data in a consistent format.
+PermissiveCSV tries hard to avoid returning errors. Because it is permissive, it will do everything it can to return data in a consistent format.
 
 In lieu of returning errors, PermissiveCSV has a `Summary()` method, which can be called after a scan is completed. `Summary()` returns an object with statistics about any actions that PermissiveCSV needed to take while reading the file in order to get it into a consistent shape.
 
 For instance, any time a record is appended or truncated as the result of being an unexpected length, the altered record number and operation type (append or truncate) is noted, and reported via the `Summary()` method after the Scan is complete.
 
+PermissiveCSV has no control over the reader that has been supplied by the caller. If the underlaying reader returns an error, that error will be made available via the `Summary().Err` value. Outside of that, PermissiveCSV will not return any errors so long as the supplied reader continues to supply data.
