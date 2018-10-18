@@ -250,25 +250,39 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 func Test_Summary(t *testing.T) {
 	tests := []struct {
 		name string
-		data string
+		data io.Reader
 		// scanLimit caps the number of times the test fixture will
 		// call Scan. -1 will call Scan until it returns false.
 		scanLimit  int
 		expSummary *permissivecsv.ScanSummary
 	}{
 		{
-			name:       "initially nil",
-			data:       "a,b,c",
+			name:       "summary nil before Scan called",
+			data:       strings.NewReader("a,b,c"),
 			scanLimit:  0,
 			expSummary: nil,
 		},
 		{
+			name:      "nil reader",
+			data:      nil,
+			scanLimit: -1,
+			expSummary: &permissivecsv.ScanSummary{
+				RecordCount:     -1,
+				AlterationCount: -1,
+				EOF:             false,
+				Err:             permissivecsv.ErrReaderIsNil,
+				Alterations:     []*permissivecsv.Alteration{},
+			},
+		},
+		{
 			name:      "lazy quotes",
-			data:      "a,b,c\n\"d,e,f\n\"g,h,i",
+			data:      strings.NewReader("a,b,c\n\"d,e,f\n\"g,h,i"),
 			scanLimit: -1,
 			expSummary: &permissivecsv.ScanSummary{
 				RecordCount:     3,
 				AlterationCount: 2,
+				EOF:             true,
+				Err:             nil,
 				Alterations: []*permissivecsv.Alteration{
 					&permissivecsv.Alteration{
 						RecordOrdinal:         2,
@@ -289,8 +303,7 @@ func Test_Summary(t *testing.T) {
 
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
-			r := strings.NewReader(test.data)
-			s := permissivecsv.NewScanner(r, permissivecsv.HeaderCheckAssumeNoHeader)
+			s := permissivecsv.NewScanner(test.data, permissivecsv.HeaderCheckAssumeNoHeader)
 			for n := 1; ; n++ {
 				if test.scanLimit >= 0 && n >= test.scanLimit {
 					break
