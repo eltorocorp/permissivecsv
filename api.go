@@ -258,9 +258,21 @@ func (s *Scanner) CurrentRecord() []string {
 	return s.relativeCurrentRecord
 }
 
+// Alteration describes a change that the Scanner made to a record because the
+// record was in an unexpected format.
+type Alteration struct {
+	RecordOrdinal         int
+	OriginalData          string
+	ResultingRecord       []string
+	AlterationDescription string
+}
+
 // ScanSummary contains information about assumptions or alterations that have
 // been made via any calls to Scan.
 type ScanSummary struct {
+	RecordCount     int
+	AlterationCount int
+	Alterations     []*Alteration
 }
 
 // Summary returns a summary of information about the assumptions or alterations

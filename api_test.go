@@ -335,10 +335,33 @@ func Test_Summary(t *testing.T) {
 		expSummary *permissivecsv.ScanSummary
 	}{
 		{
-			name:       "summary initially nil",
+			name:       "initially nil",
 			data:       "a,b,c",
 			scanLimit:  0,
 			expSummary: nil,
+		},
+		{
+			name:      "lazy quotes",
+			data:      "a,b,c\n\"d,e,f\n\"g,h,i",
+			scanLimit: -1,
+			expSummary: &permissivecsv.ScanSummary{
+				RecordCount:     3,
+				AlterationCount: 2,
+				Alterations: []*permissivecsv.Alteration{
+					&permissivecsv.Alteration{
+						RecordOrdinal:         2,
+						OriginalData:          "\"d,e,f",
+						ResultingRecord:       []string{"", "", ""},
+						AlterationDescription: "lazy quotes",
+					},
+					&permissivecsv.Alteration{
+						RecordOrdinal:         3,
+						OriginalData:          "\"g,h,i",
+						ResultingRecord:       []string{"", "", ""},
+						AlterationDescription: "lazy quotes",
+					},
+				},
+			},
 		},
 	}
 
@@ -346,9 +369,7 @@ func Test_Summary(t *testing.T) {
 		testFn := func(t *testing.T) {
 			r := strings.NewReader(test.data)
 			s := permissivecsv.NewScanner(r, permissivecsv.HeaderCheckAssumeNoHeader)
-			n := 0
-			for {
-				n++
+			for n := 1; ; n++ {
 				if test.scanLimit >= 0 && n >= test.scanLimit {
 					break
 				}
@@ -360,7 +381,7 @@ func Test_Summary(t *testing.T) {
 			summary := s.Summary()
 			if test.expSummary == nil {
 				assert.Nil(t, summary)
-			} else {
+			} else if assert.NotNil(t, summary) {
 				assert.Equal(t, *test.expSummary, *summary)
 			}
 		}
