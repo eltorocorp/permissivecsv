@@ -68,3 +68,19 @@ func ResetTerminatorTokens(ss []string) []string {
 	}
 	return ss
 }
+
+// IsExtraneousQuoteError returns true if err is a csv.ErrQuote
+func IsExtraneousQuoteError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "extraneous or missing \" in quoted-field")
+}
+
+// IsLazyQuoteError returns true if err is a csv.ErrBareQuote
+func IsLazyQuoteError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "bare \" in non-quoted-field")
+}

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-test/deep"
+
 	"github.com/eltorocorp/permissivecsv"
 	"github.com/stretchr/testify/assert"
 )
@@ -256,45 +258,39 @@ func Test_Summary(t *testing.T) {
 		scanLimit  int
 		expSummary *permissivecsv.ScanSummary
 	}{
+		// {
+		// 	name:       "summary nil before Scan called",
+		// 	data:       strings.NewReader("a,b,c"),
+		// 	scanLimit:  0,
+		// 	expSummary: nil,
+		// },
+		// {
+		// 	name:      "nil reader",
+		// 	data:      nil,
+		// 	scanLimit: -1,
+		// 	expSummary: &permissivecsv.ScanSummary{
+		// 		RecordCount:     -1,
+		// 		AlterationCount: -1,
+		// 		EOF:             false,
+		// 		Err:             permissivecsv.ErrReaderIsNil,
+		// 		Alterations:     []*permissivecsv.Alteration{},
+		// 	},
+		// },
 		{
-			name:       "summary nil before Scan called",
-			data:       strings.NewReader("a,b,c"),
-			scanLimit:  0,
-			expSummary: nil,
-		},
-		{
-			name:      "nil reader",
-			data:      nil,
+			name:      "extraneous quotes",
+			data:      strings.NewReader("\""),
 			scanLimit: -1,
 			expSummary: &permissivecsv.ScanSummary{
-				RecordCount:     -1,
-				AlterationCount: -1,
-				EOF:             false,
-				Err:             permissivecsv.ErrReaderIsNil,
-				Alterations:     []*permissivecsv.Alteration{},
-			},
-		},
-		{
-			name:      "lazy quotes",
-			data:      strings.NewReader("a,b,c\n\"d,e,f\n\"g,h,i"),
-			scanLimit: -1,
-			expSummary: &permissivecsv.ScanSummary{
-				RecordCount:     3,
-				AlterationCount: 2,
+				RecordCount:     1,
+				AlterationCount: 1,
 				EOF:             true,
 				Err:             nil,
 				Alterations: []*permissivecsv.Alteration{
 					&permissivecsv.Alteration{
-						RecordOrdinal:         2,
-						OriginalData:          "\"d,e,f",
-						ResultingRecord:       []string{"", "", ""},
-						AlterationDescription: "lazy quotes",
-					},
-					&permissivecsv.Alteration{
-						RecordOrdinal:         3,
-						OriginalData:          "\"g,h,i",
-						ResultingRecord:       []string{"", "", ""},
-						AlterationDescription: "lazy quotes",
+						RecordOrdinal:         1,
+						OriginalData:          "\"",
+						ResultingRecord:       []string{},
+						AlterationDescription: "extraneous quotes",
 					},
 				},
 			},
@@ -316,8 +312,11 @@ func Test_Summary(t *testing.T) {
 			summary := s.Summary()
 			if test.expSummary == nil {
 				assert.Nil(t, summary)
-			} else if assert.NotNil(t, summary) {
-				assert.Equal(t, *test.expSummary, *summary)
+			} else {
+				diff := deep.Equal(summary, test.expSummary)
+				if diff != nil {
+					t.Error(diff)
+				}
 			}
 		}
 		t.Run(test.name, testFn)

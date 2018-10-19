@@ -159,6 +159,10 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // If the underlaying Reader is nil, Scan will return false on the first call.
 // In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
+	var (
+		extraneousQuoteErrorEncountered = false
+	)
+
 	if s.scanSummary == nil {
 		s.scanSummary = &ScanSummary{
 			Alterations: []*Alteration{},
@@ -174,21 +178,28 @@ func (s *Scanner) Scan() bool {
 	}
 
 	var record []string
-	scanResult := s.scanner.Scan()
-	text := s.scanner.Text()
+	more := s.scanner.Scan()
+	if !more {
+		s.scanSummary.EOF = true
+		return false
+	}
 
-	if text == "" {
+	s.scanSummary.RecordCount++
+	originalText := s.scanner.Text()
+
+	if originalText == "" {
 		record = []string{""}
 	} else {
 		// we want to leverage csv.Reader for its field parsing logic, but
 		// want to avoid its record parsing logic. So, we replace any instances
 		// of \n or \r with tokens to override the Readers standard record
 		// termination handling; then fix the tokens after the fact.
-		text = util.TokenizeTerminators(text)
+		text := util.TokenizeTerminators(originalText)
 		c := csv.NewReader(strings.NewReader(text))
 		var err error
 		record, err = c.Read()
 		if err != nil {
+			extraneousQuoteErrorEncountered = util.IsExtraneousQuoteError(err)
 			record = []string{}
 		}
 		record = util.ResetTerminatorTokens(record)
@@ -216,7 +227,17 @@ func (s *Scanner) Scan() bool {
 	}
 	s.currentRecord = record
 
-	return scanResult
+	if extraneousQuoteErrorEncountered {
+		s.scanSummary.AlterationCount++
+		s.scanSummary.Alterations = append(s.scanSummary.Alterations, &Alteration{
+			RecordOrdinal:         s.scanSummary.RecordCount,
+			OriginalData:          originalText,
+			ResultingRecord:       record,
+			AlterationDescription: "extraneous quotes",
+		})
+	}
+
+	return true
 }
 
 // Reset sets the Scanner back to the top of the file, and clears any summary
