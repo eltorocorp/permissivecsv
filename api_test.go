@@ -333,6 +333,25 @@ func Test_Summary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "padded record",
+			data:      strings.NewReader("a,b,c\nd,e"),
+			scanLimit: -1,
+			expSummary: &permissivecsv.ScanSummary{
+				RecordCount:     2,
+				AlterationCount: 1,
+				EOF:             true,
+				Err:             nil,
+				Alterations: []*permissivecsv.Alteration{
+					&permissivecsv.Alteration{
+						RecordOrdinal:         2,
+						OriginalData:          "d,e",
+						ResultingRecord:       []string{"d", "e", ""},
+						AlterationDescription: permissivecsv.AltPaddedRecord,
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {

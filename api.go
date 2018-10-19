@@ -170,6 +170,7 @@ func (s *Scanner) Scan() bool {
 		extraneousQuoteEncountered = false
 		bareQuoteEncountered       = false
 		recordTruncated            = false
+		recordPadded               = false
 	)
 
 	if s.scanSummary == nil {
@@ -226,6 +227,7 @@ func (s *Scanner) Scan() bool {
 	} else if len(record) < s.expectedFieldCount {
 		pad := make([]string, s.expectedFieldCount-len(record))
 		record = append(record, pad...)
+		recordPadded = true
 	}
 
 	// In cases where the record (for any reason) ends up with zero capacity
@@ -243,6 +245,8 @@ func (s *Scanner) Scan() bool {
 		s.appendAlteration(originalText, record, AltBareQuote)
 	} else if recordTruncated {
 		s.appendAlteration(originalText, record, AltTruncatedRecord)
+	} else if recordPadded {
+		s.appendAlteration(originalText, record, AltPaddedRecord)
 	}
 
 	return true
