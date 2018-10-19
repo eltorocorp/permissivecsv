@@ -19,8 +19,8 @@ var (
 const (
 	AltBareQuote       = "bare quote"
 	AltExtraneousQuote = "extraneous quote"
-	AltTruncatedField  = "truncated field"
-	AltPaddedField     = "padded field"
+	AltTruncatedRecord = "truncated record"
+	AltPaddedRecord    = "padded record"
 )
 
 // Scanner provides an interface for permissively reading CSV input. Successive
@@ -167,8 +167,9 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
 	var (
-		extraneousQuoteErrorEncountered = false
-		bareQuoteErrorEncountered       = false
+		extraneousQuoteEncountered = false
+		bareQuoteEncountered       = false
+		recordTruncated            = false
 	)
 
 	if s.scanSummary == nil {
@@ -207,8 +208,8 @@ func (s *Scanner) Scan() bool {
 		var err error
 		record, err = c.Read()
 		if err != nil {
-			extraneousQuoteErrorEncountered = util.IsExtraneousQuoteError(err)
-			bareQuoteErrorEncountered = util.IsBareQuoteError(err)
+			extraneousQuoteEncountered = util.IsExtraneousQuoteError(err)
+			bareQuoteEncountered = util.IsBareQuoteError(err)
 			record = []string{}
 		}
 		record = util.ResetTerminatorTokens(record)
@@ -221,6 +222,7 @@ func (s *Scanner) Scan() bool {
 
 	if len(record) > s.expectedFieldCount {
 		record = record[:s.expectedFieldCount]
+		recordTruncated = true
 	} else if len(record) < s.expectedFieldCount {
 		pad := make([]string, s.expectedFieldCount-len(record))
 		record = append(record, pad...)
@@ -235,12 +237,12 @@ func (s *Scanner) Scan() bool {
 	}
 	s.currentRecord = record
 
-	if extraneousQuoteErrorEncountered {
-		s.appendAlteration(originalText, record, "extraneous quote")
-	}
-
-	if bareQuoteErrorEncountered {
-		s.appendAlteration(originalText, record, "bare quote")
+	if extraneousQuoteEncountered {
+		s.appendAlteration(originalText, record, AltExtraneousQuote)
+	} else if bareQuoteEncountered {
+		s.appendAlteration(originalText, record, AltBareQuote)
+	} else if recordTruncated {
+		s.appendAlteration(originalText, record, AltTruncatedRecord)
 	}
 
 	return true

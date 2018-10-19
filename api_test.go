@@ -314,6 +314,25 @@ func Test_Summary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "truncated record",
+			data:      strings.NewReader("a,b,c\nd,e,f,g"),
+			scanLimit: -1,
+			expSummary: &permissivecsv.ScanSummary{
+				RecordCount:     2,
+				AlterationCount: 1,
+				EOF:             true,
+				Err:             nil,
+				Alterations: []*permissivecsv.Alteration{
+					&permissivecsv.Alteration{
+						RecordOrdinal:         2,
+						OriginalData:          "d,e,f,g",
+						ResultingRecord:       []string{"d", "e", "f"},
+						AlterationDescription: permissivecsv.AltTruncatedRecord,
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
