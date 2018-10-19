@@ -313,8 +313,11 @@ func (s *Scanner) Summary() *ScanSummary {
 // to NewScanner when the Scanner was instantiated. If HeaderCheck determines
 // that the current record is a header, RecordIsHeader returns true. If
 // HeaderCheck determines that the current record is not a header,
-// RecordIsHeader will return false. See docs on HeaderSeeker for more
-// information.
+// RecordIsHeader will return false.
+// RecordIsHeader will always return false before Scan is called.
+// RecordIsHeader may return true or false after the first call to Scan.
+// RecordIsHeader will always return on the second and all subsequent calls to
+// Scan (until Reset is called).
 func (s *Scanner) RecordIsHeader() bool {
 	panic("not implemented")
 }

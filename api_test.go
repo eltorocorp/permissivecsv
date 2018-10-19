@@ -352,12 +352,24 @@ func Test_Summary(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "EOF false before end of file",
+			data:      strings.NewReader("a\n\b\nc"),
+			scanLimit: 1,
+			expSummary: &permissivecsv.ScanSummary{
+				RecordCount:     1,
+				AlterationCount: 0,
+				EOF:             false,
+				Err:             nil,
+				Alterations:     []*permissivecsv.Alteration{},
+			},
+		},
 	}
 
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
 			s := permissivecsv.NewScanner(test.data, permissivecsv.HeaderCheckAssumeNoHeader)
-			for n := 1; ; n++ {
+			for n := 0; ; n++ {
 				if test.scanLimit >= 0 && n >= test.scanLimit {
 					break
 				}
