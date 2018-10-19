@@ -16,6 +16,13 @@ var (
 	ErrReaderIsNil = fmt.Errorf("reader is nil")
 )
 
+const (
+	AltBareQuote       = "bare quote"
+	AltExtraneousQuote = "extraneous quote"
+	AltTruncatedField  = "truncated field"
+	AltPaddedField     = "padded field"
+)
+
 // Scanner provides an interface for permissively reading CSV input. Successive
 // calls to the Scan method will step through the records of a file, skipping
 // terminator bytes between each record.
@@ -161,6 +168,7 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 func (s *Scanner) Scan() bool {
 	var (
 		extraneousQuoteErrorEncountered = false
+		bareQuoteErrorEncountered       = false
 	)
 
 	if s.scanSummary == nil {
@@ -200,6 +208,7 @@ func (s *Scanner) Scan() bool {
 		record, err = c.Read()
 		if err != nil {
 			extraneousQuoteErrorEncountered = util.IsExtraneousQuoteError(err)
+			bareQuoteErrorEncountered = util.IsBareQuoteError(err)
 			record = []string{}
 		}
 		record = util.ResetTerminatorTokens(record)
@@ -217,27 +226,34 @@ func (s *Scanner) Scan() bool {
 		record = append(record, pad...)
 	}
 
-	// See "dangling terminator" test. If the initial value in a file is a
-	// terminator, the Splitter may return nil data. In cases where the record
-	// (for any reason) ends up with zero capacity (nil), we return an empty
-	// slice with capacity 1 instead. This ensures the scanner always returns
-	// an empty slice, rather than a nil slice if a record contains no fields.
+	// In cases where the record (for any reason) ends up with zero capacity
+	// (nil), we return an empty slice with capacity 1 instead. This ensures the
+	// scanner always returns an empty slice, rather than a nil slice if a
+	// record contains no fields.
 	if cap(record) == 0 {
 		record = make([]string, 0, 1)
 	}
 	s.currentRecord = record
 
 	if extraneousQuoteErrorEncountered {
-		s.scanSummary.AlterationCount++
-		s.scanSummary.Alterations = append(s.scanSummary.Alterations, &Alteration{
-			RecordOrdinal:         s.scanSummary.RecordCount,
-			OriginalData:          originalText,
-			ResultingRecord:       record,
-			AlterationDescription: "extraneous quotes",
-		})
+		s.appendAlteration(originalText, record, "extraneous quote")
+	}
+
+	if bareQuoteErrorEncountered {
+		s.appendAlteration(originalText, record, "bare quote")
 	}
 
 	return true
+}
+
+func (s *Scanner) appendAlteration(originalText string, record []string, description string) {
+	s.scanSummary.AlterationCount++
+	s.scanSummary.Alterations = append(s.scanSummary.Alterations, &Alteration{
+		RecordOrdinal:         s.scanSummary.RecordCount,
+		OriginalData:          originalText,
+		ResultingRecord:       record,
+		AlterationDescription: description,
+	})
 }
 
 // Reset sets the Scanner back to the top of the file, and clears any summary

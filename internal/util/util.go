@@ -77,8 +77,8 @@ func IsExtraneousQuoteError(err error) bool {
 	return strings.Contains(err.Error(), "extraneous or missing \" in quoted-field")
 }
 
-// IsLazyQuoteError returns true if err is a csv.ErrBareQuote
-func IsLazyQuoteError(err error) bool {
+// IsBareQuoteError returns true if err is a csv.ErrBareQuote
+func IsBareQuoteError(err error) bool {
 	if err == nil {
 		return false
 	}

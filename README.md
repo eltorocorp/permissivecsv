@@ -48,10 +48,10 @@ For all subsequent records:
 Botched Quote Handling
 ----------------------
 PermissiveCSV handles two common forms of malformed quotes.
- - Lazy quotes `"grib"flar,foo`
+ - Bare quotes `"grib"flar,foo`
  - Extraneous quotes `grib,"flar,foo`
 
-Lazy and Extraneous quotes are handled similarly PermissiveCSV. In either
+Bare and Extraneous quotes are handled similarly PermissiveCSV. In either
 of these conditions, PermissiveCSV will return a record that contains empty
 fields. See [Inconsistent Field Handling]() for information about how the
 number of fields is deduced.

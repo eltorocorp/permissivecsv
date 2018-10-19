@@ -203,9 +203,9 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 		},
 		{
 			// permissivecsv will nullify the values for all of a record's
-			// fields if it encounters a lazy quote. This is the most
+			// fields if it encounters a bare quote. This is the most
 			// consistent way to represent data that has been corrupted in this
-			// manner. permissivecsv's handling of lazy quotes differs from
+			// manner. permissivecsv's handling of bare quotes differs from
 			// the stdlib's csv.Reader. csv.Reader will concatenate all of a
 			// record's data into a single field if it encounters an unpaired
 			// quote. This results in a variation of data output per record that
@@ -213,7 +213,7 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			// for the bad record, and reports the issue via Summary.
 			// This reduces the number of data variants output by the Scanner,
 			// while allowing the caller to still handle issues as they see fit.
-			name:  "lazy quotes",
+			name:  "bare quotes",
 			input: "a,a,a\n\"b\"b,b,b\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
@@ -223,7 +223,7 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 		},
 		{
 			// permissivecsv handles extraneous quotes the same way that it
-			// handles lazy quotes, by nullifying the field values of the
+			// handles bare quotes, by nullifying the field values of the
 			// affected record.
 			name:  "extraneous quote",
 			input: "a,a,a\nb\"\"\"b,b,b\nc,c,c",
@@ -258,24 +258,24 @@ func Test_Summary(t *testing.T) {
 		scanLimit  int
 		expSummary *permissivecsv.ScanSummary
 	}{
-		// {
-		// 	name:       "summary nil before Scan called",
-		// 	data:       strings.NewReader("a,b,c"),
-		// 	scanLimit:  0,
-		// 	expSummary: nil,
-		// },
-		// {
-		// 	name:      "nil reader",
-		// 	data:      nil,
-		// 	scanLimit: -1,
-		// 	expSummary: &permissivecsv.ScanSummary{
-		// 		RecordCount:     -1,
-		// 		AlterationCount: -1,
-		// 		EOF:             false,
-		// 		Err:             permissivecsv.ErrReaderIsNil,
-		// 		Alterations:     []*permissivecsv.Alteration{},
-		// 	},
-		// },
+		{
+			name:       "summary nil before Scan called",
+			data:       strings.NewReader("a,b,c"),
+			scanLimit:  0,
+			expSummary: nil,
+		},
+		{
+			name:      "nil reader",
+			data:      nil,
+			scanLimit: -1,
+			expSummary: &permissivecsv.ScanSummary{
+				RecordCount:     -1,
+				AlterationCount: -1,
+				EOF:             false,
+				Err:             permissivecsv.ErrReaderIsNil,
+				Alterations:     []*permissivecsv.Alteration{},
+			},
+		},
 		{
 			name:      "extraneous quotes",
 			data:      strings.NewReader("\""),
@@ -290,7 +290,26 @@ func Test_Summary(t *testing.T) {
 						RecordOrdinal:         1,
 						OriginalData:          "\"",
 						ResultingRecord:       []string{},
-						AlterationDescription: "extraneous quotes",
+						AlterationDescription: permissivecsv.AltExtraneousQuote,
+					},
+				},
+			},
+		},
+		{
+			name:      "bare quote",
+			data:      strings.NewReader("a\nb\""),
+			scanLimit: -1,
+			expSummary: &permissivecsv.ScanSummary{
+				RecordCount:     2,
+				AlterationCount: 1,
+				EOF:             true,
+				Err:             nil,
+				Alterations: []*permissivecsv.Alteration{
+					&permissivecsv.Alteration{
+						RecordOrdinal:         2,
+						OriginalData:          "b\"",
+						ResultingRecord:       []string{""},
+						AlterationDescription: permissivecsv.AltBareQuote,
 					},
 				},
 			},
