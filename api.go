@@ -58,49 +58,55 @@ type Scanner struct {
 	expectedFieldCount int
 	recordsScanned     int64
 	scanSummary        *ScanSummary
+
+	// these values can only be non-nil the first time Scan is called
+	// and will be nil for all subsequent calls.
+	firstRecord  *[]string
+	secondRecord *[]string
 }
 
-// HeaderCheck is a function that evaluates whether or not the currentrecord is
+// HeaderCheck is a function that evaluates whether or not firstRecord is
 // a header. HeaderCheck is called by the RecordIsHeader method, and is supplied
-// values according to the current position of the scanner.
+// values according to the current state of the Scanner.
 //
-// i is the current record index.
+// firstRecord is the first record of the file.
+// firstRecord will be nil in the following conditions:
+//  - Scan has not been called.
+//  - The file is empty.
+//  - The Scanner has advanced beyond the first record.
 //
-// currentRecord is the current record in the scanner (this is the same value
-// that would be returned if the Record method is called.
-//
-// nextRecord is the record that immediately follows the current record.
-//
-// If the scanner is at the end of the file, nextRecord will be nil.
-//
-// If the file is empty, recordi and recordj will both be nil.
-//
-// In general, if i != 0, HeaderCheck should return false (since
-// headers are typically the first record in a file).
-type HeaderCheck func(i int, currentRecord, nextRecord *[]string) bool
+// secondRecord is the second record of the file.
+// secondRecord will be nil in the following conditions:
+//  - Scan has not been called
+//  - The file is empty.
+//  - The Scanner has advanced beyond the first record.
+//  - The file does not have a second record.
+type HeaderCheck func(firstRecord, secondRecod *[]string) bool
 
 // HeaderCheckAssumeNoHeader is a HeaderCheck that instructs the RecordIsHeader
 // method to report that no header exists for the file being scanned.
-var HeaderCheckAssumeNoHeader HeaderCheck = func(i int, currentRecord, nextRecord *[]string) bool {
+var HeaderCheckAssumeNoHeader HeaderCheck = func(firstRecord, secondRecod *[]string) bool {
 	return false
 }
 
-// HeaderCheckAssumeHeaderExists is a HeaderCheck that instructs the
-// RecordIsHeader method to always report that the first record of a file
-// is a header.
-var HeaderCheckAssumeHeaderExists HeaderCheck = func(i int, currentRecord, nextRecord *[]string) bool {
-	return i == 0
+// HeaderCheckAssumeHeaderExists returns true unless firstRecord is nil.
+var HeaderCheckAssumeHeaderExists HeaderCheck = func(firstRecord, secondRecod *[]string) bool {
+	return firstRecord != nil
 }
 
 // NewScanner returns a new Scanner to read from r.
 func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
-	scanner := bufio.NewScanner(r)
-	scanner.Split(recordSplitter)
 	return &Scanner{
 		headerCheck: headerCheck,
 		reader:      r,
-		scanner:     scanner,
+		scanner:     buildInternalScanner(r),
 	}
+}
+
+func buildInternalScanner(r io.Reader) *bufio.Scanner {
+	scanner := bufio.NewScanner(r)
+	scanner.Split(recordSplitter)
+	return scanner
 }
 
 func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
@@ -173,6 +179,20 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // If the underlaying Reader is nil, Scan will return false on the first call.
 // In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
+	// header detection
+	if s.recordsScanned == 0 {
+		more := s.scan()
+		s.firstRecord = &s.currentRecord
+		if more {
+			s.scan()
+			s.secondRecord = &s.currentRecord
+		}
+		s.scanner = buildInternalScanner(s.reader)
+	}
+	return s.scan()
+}
+
+func (s *Scanner) scan() bool {
 	var (
 		extraneousQuoteEncountered = false
 		bareQuoteEncountered       = false
@@ -319,7 +339,7 @@ func (s *Scanner) Summary() *ScanSummary {
 // RecordIsHeader will always return on the second and all subsequent calls to
 // Scan (until Reset is called).
 func (s *Scanner) RecordIsHeader() bool {
-	panic("not implemented")
+	return s.headerCheck(s.firstRecord, s.secondRecord)
 }
 
 // Segment represents a byte range within a file that contains a subset of
