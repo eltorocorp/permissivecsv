@@ -17,10 +17,17 @@ var (
 )
 
 const (
-	AltBareQuote       = "bare quote"
+	// AltBareQuote is the description for bare-quote record alterations.
+	AltBareQuote = "bare quote"
+
+	// AltExtraneousQuote is the description for extraneous-quote record alterations.
 	AltExtraneousQuote = "extraneous quote"
+
+	// AltTruncatedRecord is the description for truncated record alterations.
 	AltTruncatedRecord = "truncated record"
-	AltPaddedRecord    = "padded record"
+
+	// AltPaddedRecord is the description for padded record alterations.
+	AltPaddedRecord = "padded record"
 )
 
 // Scanner provides an interface for permissively reading CSV input. Successive
