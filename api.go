@@ -179,7 +179,6 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // If the underlaying Reader is nil, Scan will return false on the first call.
 // In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
-	// header detection
 	if !s.checkedForHeader {
 		more := s.scan()
 		s.firstRecord = make([]string, len(s.currentRecord))
@@ -373,18 +372,20 @@ type Segment struct {
 // offset where the partition ends, and the segment size, which is the
 // partition length in bytes.
 //
-// If ignoreHeaderCheck is excluded or false (the default behavior), Partition
-// calls the HeaderCheck callback when reading the file. If HeaderCheck returns
-// true, the current record is considered a header, and it is excluded from its
-// partition. If ignoreHeaderCheck is true, Partition will always include the
-// first record in the first segment, regardless of if it is a header or not.
+// If excludeHeader is true, Partition will check if a header exists. If a
+// header is detected, the first Segment will ignore the header, and the
+// LowerOffset value will be the first byte position after the header record.
+//
+// If excludeHeader is false, the LowerOffset of the first segment will always
+// be 0 (regardless of whether the first record is a header or not).
 //
 // Partition is designed to be used in conjunction with byte offset seekers
-// such as os.File.Seek or bufio.ReadSeeker.Discard in situations where files are
-// need to be accessed in an asyncronous manner.
+// such as os.File.Seek or bufio.ReadSeeker.Discard in situations where files
+// need to be accessed in a concurrent manner.
 //
-// Partition implicitly calls Reset before reading the file, so using Scan
-// and Partition in conjunction could have undesired results.
-func (s *Scanner) Partition(n int, ignoreHeaderCheck ...bool) []Segment {
-	panic("not implemented")
+// Before processing, Partition exlicitly resets the underlaying reader to the
+// top of the file. Thus, using Partition in conjunction with Scan could have
+// undesired results.
+func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
+	return []*Segment{}
 }

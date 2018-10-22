@@ -473,3 +473,32 @@ func Test_HeaderCheckCallback(t *testing.T) {
 		t.Run(test.name, testFn)
 	}
 }
+
+func Test_Partition(t *testing.T) {
+	tests := []struct {
+		name                string
+		data                io.ReadSeeker
+		recordsPerPartition int
+		excludeHeader       bool
+		expPartitions       []*permissivecsv.Segment
+	}{
+		{
+			name:                "empty file",
+			data:                strings.NewReader(""),
+			recordsPerPartition: 10,
+			excludeHeader:       false,
+			expPartitions:       []*permissivecsv.Segment{},
+		},
+	}
+	for _, test := range tests {
+		testFn := func(t *testing.T) {
+			s := permissivecsv.NewScanner(test.data, permissivecsv.HeaderCheckAssumeNoHeader)
+			partitions := s.Partition(test.recordsPerPartition, test.excludeHeader)
+			diff := deep.Equal(test.expPartitions, partitions)
+			if diff != nil {
+				t.Error(diff)
+			}
+		}
+		t.Run(test.name, testFn)
+	}
+}
