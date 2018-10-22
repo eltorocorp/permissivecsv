@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-test/deep"
-
 	"github.com/eltorocorp/permissivecsv"
+	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -487,16 +486,58 @@ func Test_Partition(t *testing.T) {
 			data:                strings.NewReader(""),
 			recordsPerPartition: 10,
 			excludeHeader:       false,
-			expPartitions:       []*permissivecsv.Segment{},
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: -1,
+					UpperOffset: -1,
+					SegmentSize: 0,
+				},
+			},
+		},
+		{
+			name:                "simple file",
+			data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 7,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 8,
+					UpperOffset: 15,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 16,
+					UpperOffset: 23,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     4,
+					LowerOffset: 24,
+					UpperOffset: 26,
+					SegmentSize: 3,
+				},
+			},
 		},
 	}
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
-			s := permissivecsv.NewScanner(test.data, permissivecsv.HeaderCheckAssumeNoHeader)
+			s := permissivecsv.NewScanner(test.data, permissivecsv.HeaderCheckAssumeHeaderExists)
 			partitions := s.Partition(test.recordsPerPartition, test.excludeHeader)
 			diff := deep.Equal(test.expPartitions, partitions)
 			if diff != nil {
-				t.Error(diff)
+				for _, d := range diff {
+					t.Log(d)
+				}
+				t.Fail()
 			}
 		}
 		t.Run(test.name, testFn)

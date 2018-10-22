@@ -50,14 +50,15 @@ const (
 // length matches the desired value. Information about padded or truncated
 // records is made available via the Summary method once scanning is complete.
 type Scanner struct {
-	headerCheck        HeaderCheck
-	currentRecord      []string
-	reader             io.ReadSeeker
-	scanner            *bufio.Scanner
-	expectedFieldCount int
-	recordsScanned     int64
-	scanSummary        *ScanSummary
-	checkedForHeader   bool
+	headerCheck           HeaderCheck
+	currentRecord         []string
+	currentRawUpperOffset int64
+	reader                io.ReadSeeker
+	scanner               *bufio.Scanner
+	expectedFieldCount    int
+	recordsScanned        int64
+	scanSummary           *ScanSummary
+	checkedForHeader      bool
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
@@ -96,20 +97,17 @@ var HeaderCheckAssumeHeaderExists HeaderCheck = func(firstRecord, secondRecod []
 
 // NewScanner returns a new Scanner to read from r.
 func NewScanner(r io.ReadSeeker, headerCheck HeaderCheck) *Scanner {
-	return &Scanner{
+	internalScanner := bufio.NewScanner(r)
+	s := &Scanner{
 		headerCheck: headerCheck,
 		reader:      r,
-		scanner:     buildInternalScanner(r),
+		scanner:     internalScanner,
 	}
+	internalScanner.Split(s.recordSplitter)
+	return s
 }
 
-func buildInternalScanner(r io.ReadSeeker) *bufio.Scanner {
-	scanner := bufio.NewScanner(r)
-	scanner.Split(recordSplitter)
-	return scanner
-}
-
-func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
 	const (
 		nl     = "\n"
 		cr     = "\r"
@@ -127,6 +125,7 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 	if invertedDOSIndex != -1 &&
 		newlineIndex == invertedDOSIndex &&
 		carriageReturnIndex > newlineIndex {
+		s.currentRawUpperOffset = int64(invertedDOSIndex + 2)
 		nearestTerminator = invertedDOSIndex
 	}
 
@@ -134,8 +133,10 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 		carriageReturnIndex == DOSIndex &&
 		newlineIndex > carriageReturnIndex {
 		if nearestTerminator == -1 {
+			s.currentRawUpperOffset = int64(DOSIndex + 2)
 			nearestTerminator = DOSIndex
 		} else if DOSIndex < nearestTerminator {
+			s.currentRawUpperOffset = int64(DOSIndex + 2)
 			nearestTerminator = DOSIndex
 		}
 	}
@@ -147,11 +148,13 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 	}
 
 	if newlineIndex != -1 {
+		s.currentRawUpperOffset = int64(newlineIndex + 1)
 		nearestTerminator = newlineIndex
 	}
 
 	if carriageReturnIndex != -1 {
 		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
+			s.currentRawUpperOffset = int64(carriageReturnIndex + 1)
 			nearestTerminator = carriageReturnIndex
 		}
 	}
@@ -166,6 +169,9 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 		return
 	}
 
+	// if the data length is zero, this will drive the offset value to -1,
+	// which may be used elsewhere in the code as a sentinal value.
+	s.currentRawUpperOffset = int64(len(data) - 1)
 	token = data
 	err = bufio.ErrFinalToken
 	return
@@ -193,10 +199,12 @@ func (s *Scanner) Scan() bool {
 		s.recordsScanned = 0
 		s.currentRecord = nil
 		s.scanSummary = nil
+		s.currentRawUpperOffset = 0
 		if s.reader != nil {
 			s.reader.Seek(0, io.SeekStart)
 		}
-		s.scanner = buildInternalScanner(s.reader)
+		s.scanner = bufio.NewScanner(s.reader)
+		s.scanner.Split(s.recordSplitter)
 		s.checkedForHeader = true
 	} else {
 		s.firstRecord = nil
@@ -235,16 +243,16 @@ func (s *Scanner) scan() bool {
 	}
 
 	s.scanSummary.RecordCount++
-	originalText := s.scanner.Text()
+	rawRecord := s.scanner.Text()
 
-	if originalText == "" {
+	if rawRecord == "" {
 		record = []string{""}
 	} else {
 		// we want to leverage csv.Reader for its field parsing logic, but
 		// want to avoid its record parsing logic. So, we replace any instances
 		// of \n or \r with tokens to override the Readers standard record
 		// termination handling; then fix the tokens after the fact.
-		text := util.TokenizeTerminators(originalText)
+		text := util.TokenizeTerminators(rawRecord)
 		c := csv.NewReader(strings.NewReader(text))
 		var err error
 		record, err = c.Read()
@@ -280,13 +288,13 @@ func (s *Scanner) scan() bool {
 	s.currentRecord = record
 
 	if extraneousQuoteEncountered {
-		s.appendAlteration(originalText, record, AltExtraneousQuote)
+		s.appendAlteration(rawRecord, record, AltExtraneousQuote)
 	} else if bareQuoteEncountered {
-		s.appendAlteration(originalText, record, AltBareQuote)
+		s.appendAlteration(rawRecord, record, AltBareQuote)
 	} else if recordTruncated {
-		s.appendAlteration(originalText, record, AltTruncatedRecord)
+		s.appendAlteration(rawRecord, record, AltTruncatedRecord)
 	} else if recordPadded {
-		s.appendAlteration(originalText, record, AltPaddedRecord)
+		s.appendAlteration(rawRecord, record, AltPaddedRecord)
 	}
 
 	return true
@@ -355,7 +363,7 @@ func (s *Scanner) RecordIsHeader() bool {
 // Segment represents a byte range within a file that contains a subset of
 // records.
 type Segment struct {
-	Position    int64
+	Ordinal     int64
 	LowerOffset int64
 	UpperOffset int64
 	SegmentSize int64
@@ -366,8 +374,8 @@ type Segment struct {
 // least n records, except for the final partition, which may contain a
 // smaller number of records.
 //
-// Each partition is represented by a Segment, which contains a Position (a
-// zero-based index representing the segment's placement relative to other
+// Each partition is represented by a Segment, which contains an Ordinal (an
+// integer value representing the segment's placement relative to other
 // segments), the lower byte offset where the partition starts, the upper byte
 // offset where the partition ends, and the segment size, which is the
 // partition length in bytes.
@@ -383,9 +391,48 @@ type Segment struct {
 // such as os.File.Seek or bufio.ReadSeeker.Discard in situations where files
 // need to be accessed in a concurrent manner.
 //
-// Before processing, Partition exlicitly resets the underlaying reader to the
+// Before processing, Partition explicitly resets the underlaying reader to the
 // top of the file. Thus, using Partition in conjunction with Scan could have
 // undesired results.
 func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
-	return []*Segment{}
+	s.Reset()
+	partitions := []*Segment{}
+	ordinal := int64(0)
+	currentLowerOffset := int64(0)
+	currentUpperOffset := int64(-1)
+	i := 0
+	EOF := false
+	for !EOF {
+		s.Scan()
+		// recordSplitter will set the offset to -1 if it reached the end the
+		// file and the remaining buffer is empty.
+		if s.currentRawUpperOffset == -1 {
+			partitions = append(partitions, &Segment{
+				Ordinal:     1,
+				LowerOffset: -1,
+				UpperOffset: -1,
+				SegmentSize: 0,
+			})
+			break
+		}
+
+		EOF = s.Summary().EOF
+		i++
+		currentUpperOffset = currentUpperOffset + s.currentRawUpperOffset
+		if i == n || EOF {
+			ordinal++
+			if EOF {
+				currentUpperOffset--
+			}
+			partitions = append(partitions, &Segment{
+				Ordinal:     ordinal,
+				LowerOffset: currentLowerOffset,
+				UpperOffset: currentUpperOffset,
+				SegmentSize: currentUpperOffset - currentLowerOffset + 1,
+			})
+			currentLowerOffset = currentUpperOffset + 1
+			i = 0
+		}
+	}
+	return partitions
 }
