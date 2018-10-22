@@ -559,6 +559,32 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:                "variable record lengths",
+			data:                strings.NewReader("a,b,c\ndd\nee,ff,gg,h\n\ni,j"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 8,
+					SegmentSize: 9,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 9,
+					UpperOffset: 20,
+					SegmentSize: 12,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 21,
+					UpperOffset: 23,
+					SegmentSize: 3,
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
