@@ -15,20 +15,24 @@ import (
 var ErrReader = errors.New("arbitrary reader error")
 
 // BadReader returns ErrReader on the first Read call.
-func BadReader(r io.Reader) io.Reader { return &badReader{r} }
+func BadReader(r io.ReadSeeker) io.ReadSeeker { return &badReader{r} }
 
 type badReader struct {
-	r io.Reader
+	r io.ReadSeeker
 }
 
 func (r *badReader) Read(p []byte) (int, error) {
 	return 0, ErrReader
 }
 
+func (r *badReader) Seek(offset int64, whence int) (int64, error) {
+	return 0, nil
+}
+
 func Test_Reader(t *testing.T) {
 	tests := []struct {
 		name             string
-		reader           io.Reader
+		reader           io.ReadSeeker
 		expScans         int
 		expCurrentRecord []string
 	}{
@@ -252,7 +256,7 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 func Test_Summary(t *testing.T) {
 	tests := []struct {
 		name string
-		data io.Reader
+		data io.ReadSeeker
 		// scanLimit caps the number of times the test fixture will
 		// call Scan. -1 will call Scan until it returns false.
 		scanLimit  int

@@ -52,11 +52,12 @@ const (
 type Scanner struct {
 	headerCheck        HeaderCheck
 	currentRecord      []string
-	reader             io.Reader
+	reader             io.ReadSeeker
 	scanner            *bufio.Scanner
 	expectedFieldCount int
 	recordsScanned     int64
 	scanSummary        *ScanSummary
+	checkedForHeader   bool
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
@@ -94,7 +95,7 @@ var HeaderCheckAssumeHeaderExists HeaderCheck = func(firstRecord, secondRecod []
 }
 
 // NewScanner returns a new Scanner to read from r.
-func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
+func NewScanner(r io.ReadSeeker, headerCheck HeaderCheck) *Scanner {
 	return &Scanner{
 		headerCheck: headerCheck,
 		reader:      r,
@@ -102,7 +103,7 @@ func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
 	}
 }
 
-func buildInternalScanner(r io.Reader) *bufio.Scanner {
+func buildInternalScanner(r io.ReadSeeker) *bufio.Scanner {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(recordSplitter)
 	return scanner
@@ -179,7 +180,7 @@ func recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err err
 // In all other cases, Scan will return true on the first call. If the
 func (s *Scanner) Scan() bool {
 	// header detection
-	if s.recordsScanned == 0 {
+	if !s.checkedForHeader {
 		more := s.scan()
 		s.firstRecord = make([]string, len(s.currentRecord))
 		copy(s.firstRecord, s.currentRecord)
@@ -190,7 +191,14 @@ func (s *Scanner) Scan() bool {
 				copy(s.secondRecord, s.currentRecord)
 			}
 		}
+		s.recordsScanned = 0
+		s.currentRecord = nil
+		s.scanSummary = nil
+		if s.reader != nil {
+			s.reader.Seek(0, io.SeekStart)
+		}
 		s.scanner = buildInternalScanner(s.reader)
+		s.checkedForHeader = true
 	} else {
 		s.firstRecord = nil
 		s.secondRecord = nil
@@ -298,6 +306,9 @@ func (s *Scanner) appendAlteration(originalText string, record []string, descrip
 // Reset sets the Scanner back to the top of the file, and clears any summary
 // data that any previous calls to Scan may have generated.
 func (s *Scanner) Reset() {
+	if s.reader != nil {
+		s.reader.Seek(0, io.SeekStart)
+	}
 	s = NewScanner(s.reader, s.headerCheck)
 }
 
@@ -369,7 +380,7 @@ type Segment struct {
 // first record in the first segment, regardless of if it is a header or not.
 //
 // Partition is designed to be used in conjunction with byte offset seekers
-// such as os.File.Seek or bufio.Reader.Discard in situations where files are
+// such as os.File.Seek or bufio.ReadSeeker.Discard in situations where files are
 // need to be accessed in an asyncronous manner.
 //
 // Partition implicitly calls Reset before reading the file, so using Scan
