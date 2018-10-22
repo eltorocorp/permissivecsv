@@ -421,6 +421,13 @@ func Test_HeaderCheckCallback(t *testing.T) {
 			expFirstRecord:  nil,
 			expSecondRecord: nil,
 		},
+		{
+			name:            "2nd nil if no second record",
+			data:            "x,y,z",
+			scanLimit:       1,
+			expFirstRecord:  []string{"x", "y", "z"},
+			expSecondRecord: nil,
+		},
 	}
 
 	for _, test := range tests {

@@ -52,7 +52,6 @@ const (
 type Scanner struct {
 	headerCheck        HeaderCheck
 	currentRecord      []string
-	eof                bool
 	reader             io.Reader
 	scanner            *bufio.Scanner
 	expectedFieldCount int
@@ -186,8 +185,10 @@ func (s *Scanner) Scan() bool {
 		copy(s.firstRecord, s.currentRecord)
 		if more {
 			s.scan()
-			s.secondRecord = make([]string, len(s.currentRecord))
-			copy(s.secondRecord, s.currentRecord)
+			if !s.Summary().EOF {
+				s.secondRecord = make([]string, len(s.currentRecord))
+				copy(s.secondRecord, s.currentRecord)
+			}
 		}
 		s.scanner = buildInternalScanner(s.reader)
 	} else {
@@ -334,15 +335,9 @@ func (s *Scanner) Summary() *ScanSummary {
 }
 
 // RecordIsHeader returns true if the current record has been identified as a
-// header. RecordIsHeader calls the HeaderCheck callback that was supplied
-// to NewScanner when the Scanner was instantiated. If HeaderCheck determines
-// that the current record is a header, RecordIsHeader returns true. If
-// HeaderCheck determines that the current record is not a header,
-// RecordIsHeader will return false.
-// RecordIsHeader will always return false before Scan is called.
-// RecordIsHeader may return true or false after the first call to Scan.
-// RecordIsHeader will always return on the second and all subsequent calls to
-// Scan (until Reset is called).
+// header. RecordIsHeader determines if the current record is a header by
+// calling the HeaderCheck callback which was supplied to NewScanner when the
+// Scanner was instantiated.
 func (s *Scanner) RecordIsHeader() bool {
 	return s.headerCheck(s.firstRecord, s.secondRecord)
 }
