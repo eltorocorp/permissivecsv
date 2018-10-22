@@ -397,8 +397,8 @@ func Test_HeaderCheckCallback(t *testing.T) {
 		name            string
 		data            string
 		scanLimit       int
-		expFirstRecord  *[]string
-		expSecondRecord *[]string
+		expFirstRecord  []string
+		expSecondRecord []string
 	}{
 		{
 			name:            "nils before Scan",
@@ -407,13 +407,20 @@ func Test_HeaderCheckCallback(t *testing.T) {
 			expFirstRecord:  nil,
 			expSecondRecord: nil,
 		},
+		{
+			name:            "1st and 2nd correct on first Scan",
+			data:            "a,b,c\nd,e,f\ng,h,i",
+			scanLimit:       1,
+			expFirstRecord:  []string{"a", "b", "c"},
+			expSecondRecord: []string{"d", "e", "f"},
+		},
 	}
 
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
-			var actualFirstRecord *[]string
-			var actualSecondRecord *[]string
-			headerCheck := func(firstRecord, secondRecord *[]string) bool {
+			var actualFirstRecord []string
+			var actualSecondRecord []string
+			headerCheck := func(firstRecord, secondRecord []string) bool {
 				actualFirstRecord = firstRecord
 				actualSecondRecord = secondRecord
 				return false
@@ -425,6 +432,9 @@ func Test_HeaderCheckCallback(t *testing.T) {
 					break
 				}
 				more := s.Scan()
+				// actual result of RecordIsHeader isn't pertinant to these test
+				// cases
+				_ = s.RecordIsHeader()
 				if !more {
 					break
 				}
@@ -432,14 +442,14 @@ func Test_HeaderCheckCallback(t *testing.T) {
 
 			if test.expFirstRecord == nil {
 				assert.Nil(t, actualFirstRecord, "expected first record to be nil")
-			} else if assert.NotNil(t, actualFirstRecord) {
-				assert.Equal(t, *test.expFirstRecord, *actualFirstRecord)
+			} else {
+				assert.Equal(t, test.expFirstRecord, actualFirstRecord)
 			}
 
 			if test.expSecondRecord == nil {
 				assert.Nil(t, actualSecondRecord, "expected second record to be nil")
-			} else if assert.NotNil(t, actualSecondRecord) {
-				assert.Equal(t, *test.expSecondRecord, *actualSecondRecord)
+			} else {
+				assert.Equal(t, test.expSecondRecord, actualSecondRecord)
 			}
 		}
 		t.Run(test.name, testFn)

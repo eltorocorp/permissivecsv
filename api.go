@@ -61,8 +61,8 @@ type Scanner struct {
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
-	firstRecord  *[]string
-	secondRecord *[]string
+	firstRecord  []string
+	secondRecord []string
 }
 
 // HeaderCheck is a function that evaluates whether or not firstRecord is
@@ -81,16 +81,16 @@ type Scanner struct {
 //  - The file is empty.
 //  - The Scanner has advanced beyond the first record.
 //  - The file does not have a second record.
-type HeaderCheck func(firstRecord, secondRecod *[]string) bool
+type HeaderCheck func(firstRecord, secondRecod []string) bool
 
 // HeaderCheckAssumeNoHeader is a HeaderCheck that instructs the RecordIsHeader
 // method to report that no header exists for the file being scanned.
-var HeaderCheckAssumeNoHeader HeaderCheck = func(firstRecord, secondRecod *[]string) bool {
+var HeaderCheckAssumeNoHeader HeaderCheck = func(firstRecord, secondRecod []string) bool {
 	return false
 }
 
 // HeaderCheckAssumeHeaderExists returns true unless firstRecord is nil.
-var HeaderCheckAssumeHeaderExists HeaderCheck = func(firstRecord, secondRecod *[]string) bool {
+var HeaderCheckAssumeHeaderExists HeaderCheck = func(firstRecord, secondRecod []string) bool {
 	return firstRecord != nil
 }
 
@@ -182,10 +182,12 @@ func (s *Scanner) Scan() bool {
 	// header detection
 	if s.recordsScanned == 0 {
 		more := s.scan()
-		s.firstRecord = &s.currentRecord
+		s.firstRecord = make([]string, len(s.currentRecord))
+		copy(s.firstRecord, s.currentRecord)
 		if more {
 			s.scan()
-			s.secondRecord = &s.currentRecord
+			s.secondRecord = make([]string, len(s.currentRecord))
+			copy(s.secondRecord, s.currentRecord)
 		}
 		s.scanner = buildInternalScanner(s.reader)
 	}
