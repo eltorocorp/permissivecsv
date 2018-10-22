@@ -190,6 +190,9 @@ func (s *Scanner) Scan() bool {
 			copy(s.secondRecord, s.currentRecord)
 		}
 		s.scanner = buildInternalScanner(s.reader)
+	} else {
+		s.firstRecord = nil
+		s.secondRecord = nil
 	}
 	return s.scan()
 }

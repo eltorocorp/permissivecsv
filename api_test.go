@@ -414,6 +414,13 @@ func Test_HeaderCheckCallback(t *testing.T) {
 			expFirstRecord:  []string{"a", "b", "c"},
 			expSecondRecord: []string{"d", "e", "f"},
 		},
+		{
+			name:            "scan advanced beyond first record",
+			data:            "a,b,c\nd,e,f\ng,h,i",
+			scanLimit:       -1,
+			expFirstRecord:  nil,
+			expSecondRecord: nil,
+		},
 	}
 
 	for _, test := range tests {
