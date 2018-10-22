@@ -527,6 +527,38 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:                "mixed terminators",
+			data:                strings.NewReader("a,b\r\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 8,
+					SegmentSize: 9,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 9,
+					UpperOffset: 16,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 17,
+					UpperOffset: 24,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     4,
+					LowerOffset: 25,
+					UpperOffset: 27,
+					SegmentSize: 3,
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
