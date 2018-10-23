@@ -437,6 +437,11 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 		}
 	}
 
+	// Flushing any partially filled segment.
+	// If i > 0, at least one record read for a new segment in the last scan
+	// loop.
+	// If i < n, the last Scan loop was not able to completely fill the final
+	// segment before exiting.
 	if i > 0 && i < n {
 		ordinal++
 		partitions = append(partitions, &Segment{
