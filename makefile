@@ -11,6 +11,5 @@ build:
 .PHONY: build
 
 test:
-	@echo Purging old mocks...
 	@go test ./...
 .PHONY: test
