@@ -5,12 +5,12 @@ def setBuildStatusBadge(status, color) {
 
 def slackSuccess() {
     def slack_message = "permissivecsv build succeeded!"
-    slackSend channel: '#dev-badass-badgers', message: "${slack_message}", failOnError:true, tokenCredentialId: 'slack-token', color:"danger"
+    slackSend channel: '#dev-badass-badgers', message: "${slack_message}", failOnError:true, tokenCredentialId: 'slack-token', color:"good"
 }
 
 def slackFailure(){
     def slack_message = "permissivecsv build failed! Details: ${BUILD_URL}"
-    slackSend channel: '#dev-badass-badgers', message: "${slack_message}", failOnError:true, tokenCredentialId: 'slack-token', color:"good"
+    slackSend channel: '#dev-badass-badgers', message: "${slack_message}", failOnError:true, tokenCredentialId: 'slack-token', color:"danger"
 }
 
 node {
