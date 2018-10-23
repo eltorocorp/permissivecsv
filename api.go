@@ -1,5 +1,5 @@
-// Package permissivecsv provides capabilities for permissively reading
-// non-standards compliant csv file.
+// Package permissivecsv provides facilties for permissively reading
+// non-standards-compliant csv files.
 package permissivecsv
 
 import (
@@ -36,15 +36,38 @@ const (
 	AltPaddedRecord = "padded record"
 )
 
-// Scanner provides an interface for permissively reading CSV input. Successive
+// Scanner provides facility for permissively reading CSV input. Successive
 // calls to the Scan method will step through the records of a file, skipping
 // terminator bytes between each record.
 //
-// Terminators (line endings) can be any (or a mix) of DOS or unix endings
-// (\r\n or \n, respectively). When scanning, the scanner looks for the next
-// occurrence of both a '\r\n` and a `\n`. Whichever token is encountered first
-// is presumed to be the current record terminator. This process is repeated
-// for each record that is scanned.
+// Terminators (line endings) can be any (or a mix) of DOS (\r\n), inverted DOS
+// (\n\r), unix (\n), or carriage return (\r) tokens.  When scanning, the
+// scanner looks for the next occurence of any known token within a search
+// space.
+//
+// Any tokens that fall within a pair of double quotes are ignored.
+//
+// If no tokens are found within the current search space, the space is expanded
+// until either a token or EOF is reached.
+//
+// If only one token is found in the current space, that token is
+// presumed to be the terminator for the current record.
+//
+// If more than one potential token is identified in the current
+// space, the Scanner will select the first, non-quoted, highest priority
+// token. The Scanner first gives priority to token length. Longer tokens have
+// higher priority than shorter tokens. This priority avoids lexographical
+// confusion between shorter tokens and longer tokens that are actually
+// composites of the shorter tokens. Thus, DOS and inverted DOS terminators have
+// highest priority, as they are longer than unix or carriage return
+// terminators. Between two or more tokens of the same length, the Scanner gives
+// priority to tokens that are more common. Thus DOS has higher priority than
+// inverted DOS because inverted DOS is a non-standard terminator. Similarly
+// between unix and carriage return, unix has priority, as bare carriage returns
+// are a non-standard terminator.
+//
+// The preceding terminator detection process is repeated for each record that
+// is scanned.
 //
 // Once a record is identified, it is split into fields using standard CSV
 // encoding rules. A mixture of quoted and unquoted field values is permitted,
@@ -53,8 +76,20 @@ const (
 // record, if the record has fewer fields than expected, the scanner will pad
 // the record with blank fields to accommodate the missing data. If the record
 // has more fields than expected, the scanner will truncate the record so its
-// length matches the desired value. Information about padded or truncated
+// length matches the desired length. Information about padded or truncated
 // records is made available via the Summary method once scanning is complete.
+//
+// When parsing the fields of a record, the Scanner might encounter ambiguous
+// double quotes. Two common quote ambiguities are handled by the Scanner.
+// 1) Bare-Quotes, where a field contains two quotes, but also appears to have
+// data outside of the quotes. 2) Extraneous-Quotes, where a record appears to
+// have an odd number of quotes, making it impossible to determine if a quote
+// was left unclosed, or if the extraneous quote was supposed to be escaped.
+// If the Scanner encounters quotes that are ambiguous, it will return empty
+// fields in place of any data that might have been present, as the Scanner is
+// unable to make any assumptions about the author's intentions. When such
+// replacements are made, the type of replacement, record number, and original
+// data are all immediately available via the Summary method.
 type Scanner struct {
 	headerCheck           HeaderCheck
 	currentRecord         []string
