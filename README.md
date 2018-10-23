@@ -1,5 +1,9 @@
 permissivecsv
 =============
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/eltorocorp/permissivecsv)]
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/eltorocorp/drygopher/permissivecsv)
+
 PermissiveCSV is a CSV reader that reads non-standard-compliant CSVs. It allows for inconsistencies in the files in exchange for the consumer taking on responsibility for potential mis-reads.
 
 Most CSV readers work from the assumption that the inbound CSV is standards-compliant. As such, typical CSV readers will return errors any time they are unable to parse a record or field due to things like terminator or delimiter inconsistency and field count mismatches.
