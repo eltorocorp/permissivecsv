@@ -82,7 +82,7 @@ type Scanner struct {
 //  - The file is empty.
 //  - The Scanner has advanced beyond the first record.
 //  - The file does not have a second record.
-type HeaderCheck func(firstRecord, secondRecod []string) bool
+type HeaderCheck func(firstRecord, secondRecord []string) bool
 
 // HeaderCheckAssumeNoHeader is a HeaderCheck that instructs the RecordIsHeader
 // method to report that no header exists for the file being scanned.

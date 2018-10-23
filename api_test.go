@@ -611,32 +611,32 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:                "ignore header",
-		// 	data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
-		// 	recordsPerPartition: 2,
-		// 	excludeHeader:       true,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     1,
-		// 			LowerOffset: 4,
-		// 			UpperOffset: 11,
-		// 			SegmentSize: 8,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     2,
-		// 			LowerOffset: 12,
-		// 			UpperOffset: 19,
-		// 			SegmentSize: 8,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     3,
-		// 			LowerOffset: 20,
-		// 			UpperOffset: 26,
-		// 			SegmentSize: 7,
-		// 		},
-		// 	},
-		// },
+		{
+			name:                "ignore header",
+			data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       true,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 4,
+					UpperOffset: 11,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 12,
+					UpperOffset: 19,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 20,
+					UpperOffset: 26,
+					SegmentSize: 7,
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
