@@ -15,7 +15,7 @@ Features
 
 Sloppy-Terminator Support
 -------------------------
-PermissiveCSV will detect and read CSVs with either unix (`\n`), DOS (`\r\n`), inverted DOS (`\n\r`), or carriage return (`\r\`)  record terminators. Furthermore, the terminator is permitted to be inconsistent from record to record.
+PermissiveCSV will detect and read CSVs with either unix (`\n`), DOS (`\r\n`), inverted DOS (`\n\r`), or carriage return (`\r`)  record terminators. Furthermore, the terminator is permitted to be inconsistent from record to record.
 
 When scanning a search space for a terminator, PermissiveCSV will select the first non-quoted terminator it encounters using the following order:
 
