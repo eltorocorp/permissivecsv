@@ -2,10 +2,14 @@ package permissivecsv
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"strings"
+	"text/template"
 
 	"github.com/eltorocorp/permissivecsv/internal/util"
 )
@@ -345,6 +349,38 @@ type ScanSummary struct {
 	Alterations     []*Alteration
 	EOF             bool
 	Err             error
+}
+
+// String returns a prettified representation of the summary.
+func (s *ScanSummary) String() string {
+	const templateText = `Scan Summary
+---------------------------------------
+  Records Scanned:    {{.RecordCount}}
+  Alterations Made:   {{.AlterationCount}}
+  EOF:                {{.EOF}}
+  Err:                {{if .Err}}{{.Err}}{{else}}none{{end}}
+  Alterations:{{range .Alterations}}
+    Record Number:    {{.RecordOrdinal}}
+    Alteration:       {{.AlterationDescription}}
+    Original Data:    {{.OriginalData}}
+    Resulting Record: {{json .ResultingRecord}}
+{{else}}        none{{end}}`
+
+	var recordToJSON = func(s []string) string {
+		record, err := json.Marshal(s)
+		util.Panic(err)
+		return string(record)
+	}
+	funcMap := template.FuncMap{"json": recordToJSON}
+	tmpl := template.Must(template.
+		New("summary").
+		Funcs(funcMap).
+		Parse(templateText))
+	buf := new(bytes.Buffer)
+	util.Panic(tmpl.Execute(buf, s))
+	result, err := ioutil.ReadAll(buf)
+	util.Panic(err)
+	return string(result)
 }
 
 // Summary returns a summary of information about the assumptions or alterations

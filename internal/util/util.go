@@ -84,3 +84,10 @@ func IsBareQuoteError(err error) bool {
 	}
 	return strings.Contains(err.Error(), "bare \" in non-quoted-field")
 }
+
+// Panic will panic if err is not nil.
+func Panic(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
