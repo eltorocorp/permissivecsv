@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// IndexNonQuoted returns the index of the first non-quoted occurence of
+// IndexNonQuoted returns the index of the first non-quoted occurrence of
 // substr in s.
 func IndexNonQuoted(s, substr string) int {
 	substr = regexp.QuoteMeta(substr)

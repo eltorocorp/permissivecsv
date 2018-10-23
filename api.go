@@ -36,7 +36,7 @@ const (
 //
 // Terminators (line endings) can be any (or a mix) of DOS or unix endings
 // (\r\n or \n, respectively). When scanning, the scanner looks for the next
-// occurence of both a '\r\n` and a `\n`. Whichever token is encountered first
+// occurrence of both a '\r\n` and a `\n`. Whichever token is encountered first
 // is presumed to be the current record terminator. This process is repeated
 // for each record that is scanned.
 //
@@ -45,7 +45,7 @@ const (
 // and fields are presumed to be separated by commas. The first record scanned
 // is always presumed to have the correct number of fields. For each subsequent
 // record, if the record has fewer fields than expected, the scanner will pad
-// the record with blank fields to accomodate the missing data. If the record
+// the record with blank fields to accommodate the missing data. If the record
 // has more fields than expected, the scanner will truncate the record so its
 // length matches the desired value. Information about padded or truncated
 // records is made available via the Summary method once scanning is complete.
