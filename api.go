@@ -171,7 +171,11 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 
 	// if the data length is zero, this will drive the offset value to -1,
 	// which may be used elsewhere in the code as a sentinal value.
-	s.currentRawUpperOffset = int64(len(data) - 1)
+	if len(data) == 0 {
+		s.currentRawUpperOffset = int64(len(data) - 1)
+	} else {
+		s.currentRawUpperOffset = int64(len(data))
+	}
 	token = data
 	err = bufio.ErrFinalToken
 	return
@@ -401,9 +405,7 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	currentLowerOffset := int64(0)
 	currentUpperOffset := int64(-1)
 	i := 0
-	EOF := false
-	for !EOF {
-		s.Scan()
+	for s.Scan() {
 		// recordSplitter will set the offset to -1 if it reached the end the
 		// file and the remaining buffer is empty.
 		if s.currentRawUpperOffset == -1 {
@@ -416,14 +418,14 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			break
 		}
 
-		EOF = s.Summary().EOF
-		i++
 		currentUpperOffset = currentUpperOffset + s.currentRawUpperOffset
-		if i == n || EOF {
+		if excludeHeader && s.RecordIsHeader() {
+			currentLowerOffset = currentUpperOffset + 1
+			continue
+		}
+		i++
+		if i == n {
 			ordinal++
-			if EOF {
-				currentUpperOffset--
-			}
 			partitions = append(partitions, &Segment{
 				Ordinal:     ordinal,
 				LowerOffset: currentLowerOffset,
@@ -434,5 +436,16 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			i = 0
 		}
 	}
+
+	if i > 0 && i < n {
+		ordinal++
+		partitions = append(partitions, &Segment{
+			Ordinal:     ordinal,
+			LowerOffset: currentLowerOffset,
+			UpperOffset: currentUpperOffset,
+			SegmentSize: currentUpperOffset - currentLowerOffset + 1,
+		})
+	}
+
 	return partitions
 }
