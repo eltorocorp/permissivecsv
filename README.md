@@ -1,7 +1,7 @@
 permissivecsv
 =============
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/eltorocorp/permissivecsv)]
+[![Go Report Card](https://goreportcard.com/badge/github.com/eltorocorp/permissivecsv)
 [![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/eltorocorp/drygopher/permissivecsv)
 
 PermissiveCSV is a CSV reader that reads non-standard-compliant CSVs. It allows for inconsistencies in the files in exchange for the consumer taking on responsibility for potential mis-reads.
