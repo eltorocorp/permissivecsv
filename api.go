@@ -1,3 +1,5 @@
+// Package permissivecsv provides capabilities for permissively reading
+// non-standards compliant csv file.
 package permissivecsv
 
 import (
@@ -191,7 +193,7 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 // return false until the Reset method is called.
 //
 // If the underlaying Reader is nil, Scan will return false on the first call.
-// In all other cases, Scan will return true on the first call. If the
+// In all other cases, Scan will return true on the first call.
 func (s *Scanner) Scan() bool {
 	if !s.checkedForHeader {
 		more := s.scan()
