@@ -455,7 +455,54 @@ type Segment struct {
 // integer value representing the segment's placement relative to other
 // segments), the lower byte offset where the partition starts, the upper byte
 // offset where the partition ends, and the segment size, which is the
-// partition length in bytes.
+// partition length in bytes. If the file being read is empty (0 bytes),
+// Partition will return a single empty segment with a length of zero, and
+// both offsets set to -1.
+//
+// To maintain record consistency across segments, the byte offsets
+// for a segment typically exclude its trailing terminator. Stripping the
+// trailing terminator from the segment ensures that each segment can be properly
+// interpreted as an independent file without having to make potentially
+// erronious assumptions about implied empty records. In cases where a
+// leading or trailing terminator implies that an empty record exists, the
+// terminator will be retained. The following examples demonstrate how these
+// rules are applied:
+//
+//	Terminators between segments are excluded from each segments byte-range.
+//	----------------------------------------------------------------------------
+//	Example 1: 6 records, 2 records per segment
+//	Raw Data : 1\n2\n3\n4\n5\n6
+//	Segment 1: 1\n2 <-- \n following record 2 is ommitted
+//	Segment 2: 3\n4 <-- \n following record 4 is ommitted
+//	Segment 3: 5\n6
+//
+//	Leading terminators are retained, as permissivecsv assumes they imply the
+//	file starts with a record with a single empty field.
+//	----------------------------------------------------------------------------
+//	Example 2: 6 records, 2 records per segment
+//	Raw Data :  \n2\n3\n4\n5\n6
+//	Segment 1:  \n2 <-- record 1 is implied to be an empty record.
+//	Segment 2: 3\n4
+//	Segment 3: 5\n6
+//
+//	Trailing terminators are included if an empty record is implied.
+//	----------------------------------------------------------------------------
+//	Example 3: 6 records, 2 records per segment
+//	Raw Data : 1\n2\n\n4\n5\n
+//	Segment 1: 1\n2
+//	Segment 2:  \n4 <-- record 3 is implied as an empty record
+//	Segment 3: 5\n  <-- record 6 is implied as an empty record
+//
+//  Terminators are retained for empty records.
+//	----------------------------------------------------------------------------
+//	Example 4: 6 records, 1 records per segment
+//	Raw Data : 1\n\n3\n\n5\n6
+//	Segment 1: 1
+//	Segment 2: \n  <-- record 2 is implied as an empty record
+//	Segment 3: 3
+//	Segment 4: \n  <-- record 4 is implied as an empty record
+//	Segment 5: 5
+//	Segment 6: 6
 //
 // If excludeHeader is true, Partition will check if a header exists. If a
 // header is detected, the first Segment will ignore the header, and the

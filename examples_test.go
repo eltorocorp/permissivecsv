@@ -42,7 +42,7 @@ func ExampleScanner_Summary() {
 // instructing Partition to exclude the header from the segments. This is why
 // segment 1 starts at offset 6, just after the header record.
 func ExampleScanner_Partition() {
-	data := strings.NewReader("a,b,c\nd,e,f\ng,h,i\nj,k,l")
+	data := strings.NewReader("a,b,c\nd,e,f\ng,h,i\nj,k,l\n")
 	s := permissivecsv.NewScanner(data, permissivecsv.HeaderCheckAssumeHeaderExists)
 	recordsPerPartition := 2
 	excludeHeader := true
@@ -64,8 +64,13 @@ func ExampleScanner_Partition() {
 	//     "LowerOffset": 18,
 	//     "UpperOffset": 22,
 	//     "SegmentSize": 5
-	//   }
-	// ]
+	//   },
+	//   {
+	//     "Ordinal": 3,
+	//     "LowerOffset": 23,
+	//     "UpperOffset": 23,
+	//     "SegmentSize": 1
+	//   },	// ]
 }
 
 func ExampleScanner_RecordIsHeader_assumeHeaderExists() {

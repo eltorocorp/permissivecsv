@@ -504,14 +504,14 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 7,
-					SegmentSize: 8,
+					UpperOffset: 6,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 8,
-					UpperOffset: 15,
-					SegmentSize: 8,
+					UpperOffset: 14,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
@@ -530,20 +530,20 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 7,
-					SegmentSize: 8,
+					UpperOffset: 6,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 8,
-					UpperOffset: 15,
-					SegmentSize: 8,
+					UpperOffset: 14,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 16,
-					UpperOffset: 23,
-					SegmentSize: 8,
+					UpperOffset: 22,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
@@ -562,20 +562,20 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 8,
-					SegmentSize: 9,
+					UpperOffset: 7,
+					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 9,
-					UpperOffset: 16,
-					SegmentSize: 8,
+					UpperOffset: 15,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 17,
-					UpperOffset: 24,
-					SegmentSize: 8,
+					UpperOffset: 23,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
@@ -594,14 +594,14 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 8,
-					SegmentSize: 9,
+					UpperOffset: 7,
+					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 9,
-					UpperOffset: 20,
-					SegmentSize: 12,
+					UpperOffset: 19,
+					SegmentSize: 11,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
@@ -620,14 +620,14 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 4,
-					UpperOffset: 11,
-					SegmentSize: 8,
+					UpperOffset: 10,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 12,
-					UpperOffset: 19,
-					SegmentSize: 8,
+					UpperOffset: 18,
+					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
@@ -637,6 +637,11 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
+		// New Cases:
+		// 1) terminators between segments are stripped
+		// 2) leading terminators retained for implied record
+		// 3) trailing terminator retained for implied record
+		// 4) terminator retained for empty record
 	}
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
