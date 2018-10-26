@@ -587,6 +587,7 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	// segment before exiting.
 	if i > 0 && i < n {
 		ordinal++
+		currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
 		partitions = append(partitions, &Segment{
 			Ordinal:     ordinal,
 			LowerOffset: currentLowerOffset,

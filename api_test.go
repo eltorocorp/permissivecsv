@@ -521,38 +521,38 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:                "partial final segment",
-		// 	data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
-		// 	recordsPerPartition: 2,
-		// 	excludeHeader:       false,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     1,
-		// 			LowerOffset: 0,
-		// 			UpperOffset: 6,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     2,
-		// 			LowerOffset: 8,
-		// 			UpperOffset: 14,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     3,
-		// 			LowerOffset: 16,
-		// 			UpperOffset: 22,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     4,
-		// 			LowerOffset: 24,
-		// 			UpperOffset: 26,
-		// 			SegmentSize: 3,
-		// 		},
-		// 	},
-		// },
+		{
+			name:                "partial final segment",
+			data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 6,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 8,
+					UpperOffset: 14,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 16,
+					UpperOffset: 22,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     4,
+					LowerOffset: 24,
+					UpperOffset: 26,
+					SegmentSize: 3,
+				},
+			},
+		},
 		// {
 		// 	name:                "mixed terminators",
 		// 	data:                strings.NewReader("a,b\r\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
