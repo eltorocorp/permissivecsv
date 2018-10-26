@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"strings"
 	"text/template"
 
@@ -94,6 +95,8 @@ type Scanner struct {
 	headerCheck           HeaderCheck
 	currentRecord         []string
 	currentRawUpperOffset int64
+	currentTerminator     string
+	currentRawRecord      string
 	reader                io.ReadSeeker
 	scanner               *bufio.Scanner
 	expectedFieldCount    int
@@ -167,6 +170,7 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 		newlineIndex == invertedDOSIndex &&
 		carriageReturnIndex > newlineIndex {
 		s.currentRawUpperOffset = int64(invertedDOSIndex + 2)
+		s.currentTerminator = invdos
 		nearestTerminator = invertedDOSIndex
 	}
 
@@ -175,9 +179,11 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 		newlineIndex > carriageReturnIndex {
 		if nearestTerminator == -1 {
 			s.currentRawUpperOffset = int64(DOSIndex + 2)
+			s.currentTerminator = dos
 			nearestTerminator = DOSIndex
 		} else if DOSIndex < nearestTerminator {
 			s.currentRawUpperOffset = int64(DOSIndex + 2)
+			s.currentTerminator = dos
 			nearestTerminator = DOSIndex
 		}
 	}
@@ -190,19 +196,21 @@ func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []
 
 	if newlineIndex != -1 {
 		s.currentRawUpperOffset = int64(newlineIndex + 1)
+		s.currentTerminator = nl
 		nearestTerminator = newlineIndex
 	}
 
 	if carriageReturnIndex != -1 {
 		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
 			s.currentRawUpperOffset = int64(carriageReturnIndex + 1)
+			s.currentTerminator = cr
 			nearestTerminator = carriageReturnIndex
 		}
 	}
 
 	if nearestTerminator != -1 {
 		advance = nearestTerminator + 1
-		token = data[:nearestTerminator]
+		token = data[:nearestTerminator+len(s.currentTerminator)]
 		return
 	}
 
@@ -288,16 +296,22 @@ func (s *Scanner) scan() bool {
 	}
 
 	s.scanSummary.RecordCount++
-	rawRecord := s.scanner.Text()
+	s.currentRawRecord = s.scanner.Text()
+	var trimmedRawRecord string
+	if strings.HasSuffix(s.currentRawRecord, s.currentTerminator) {
+		trimmedRawRecord = s.currentRawRecord[:len(s.currentRawRecord)-len(s.currentTerminator)]
+	} else {
+		trimmedRawRecord = s.currentRawRecord
+	}
 
-	if rawRecord == "" {
+	if trimmedRawRecord == "" {
 		record = []string{""}
 	} else {
 		// we want to leverage csv.Reader for its field parsing logic, but
 		// want to avoid its record parsing logic. So, we replace any instances
 		// of \n or \r with tokens to override the Readers standard record
 		// termination handling; then fix the tokens after the fact.
-		text := util.TokenizeTerminators(rawRecord)
+		text := util.TokenizeTerminators(trimmedRawRecord)
 		c := csv.NewReader(strings.NewReader(text))
 		var err error
 		record, err = c.Read()
@@ -333,13 +347,13 @@ func (s *Scanner) scan() bool {
 	s.currentRecord = record
 
 	if extraneousQuoteEncountered {
-		s.appendAlteration(rawRecord, record, AltExtraneousQuote)
+		s.appendAlteration(trimmedRawRecord, record, AltExtraneousQuote)
 	} else if bareQuoteEncountered {
-		s.appendAlteration(rawRecord, record, AltBareQuote)
+		s.appendAlteration(trimmedRawRecord, record, AltBareQuote)
 	} else if recordTruncated {
-		s.appendAlteration(rawRecord, record, AltTruncatedRecord)
+		s.appendAlteration(trimmedRawRecord, record, AltTruncatedRecord)
 	} else if recordPadded {
-		s.appendAlteration(rawRecord, record, AltPaddedRecord)
+		s.appendAlteration(trimmedRawRecord, record, AltPaddedRecord)
 	}
 
 	return true
@@ -525,7 +539,9 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	currentLowerOffset := int64(0)
 	currentUpperOffset := int64(-1)
 	i := 0
+	segmentRawRecord := ""
 	for s.Scan() {
+
 		// recordSplitter will set the offset to -1 if it reached the end the
 		// file and the remaining buffer is empty.
 		if s.currentRawUpperOffset == -1 {
@@ -538,13 +554,19 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			break
 		}
 
-		currentUpperOffset = currentUpperOffset + s.currentRawUpperOffset
 		if excludeHeader && s.RecordIsHeader() {
-			currentLowerOffset = currentUpperOffset + 1
+			currentLowerOffset = s.currentRawUpperOffset + 1
 			continue
 		}
+
+		segmentRawRecord += s.currentRawRecord
 		i++
 		if i == n {
+			if strings.HasSuffix(segmentRawRecord, s.currentTerminator) {
+				segmentRawRecord = segmentRawRecord[:len(segmentRawRecord)-len(s.currentTerminator)]
+			}
+			log.Println("Current SegmentRawRecord: ", segmentRawRecord)
+			currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
 			ordinal++
 			partitions = append(partitions, &Segment{
 				Ordinal:     ordinal,
@@ -552,7 +574,8 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 				UpperOffset: currentUpperOffset,
 				SegmentSize: currentUpperOffset - currentLowerOffset + 1,
 			})
-			currentLowerOffset = currentUpperOffset + 1
+			currentLowerOffset = currentUpperOffset + int64(len(s.currentTerminator)) + 1
+			segmentRawRecord = ""
 			i = 0
 		}
 	}
