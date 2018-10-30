@@ -43,9 +43,9 @@ func Test_Split(t *testing.T) {
 			expToken:   []byte("a,b,c"),
 			expErr:     bufio.ErrFinalToken,
 		},
+		// The trailing terminator should be included with the record it
+		// terminates.
 		{
-			// The trailing terminator should be included with the record it
-			// terminates.
 			name:       "unix",
 			data:       []byte("a,b,c\nd,e,f"),
 			atEOF:      false,
@@ -75,6 +75,26 @@ func Test_Split(t *testing.T) {
 			atEOF:      false,
 			expAdvance: 7,
 			expToken:   []byte("a,b,c\r\n"),
+			expErr:     nil,
+		},
+		// If the current search space ends in a newline or carriage return,
+		// and no other non-quoted terminators are present at an earlier index,
+		// the search space should be increased to ensure that the correct
+		// terminator is chosen.
+		{
+			name:       "partial dos terminator closing search space",
+			data:       []byte("a,b,c\r"),
+			atEOF:      false,
+			expAdvance: 0,
+			expToken:   nil,
+			expErr:     nil,
+		},
+		{
+			name:       "partial invdos terminator closing search space",
+			data:       []byte("a,b,c\n"),
+			atEOF:      false,
+			expAdvance: 0,
+			expToken:   nil,
 			expErr:     nil,
 		},
 	}

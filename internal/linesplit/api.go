@@ -90,8 +90,16 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 	}
 
 	if nearestTerminator != -1 {
-		advance = nearestTerminator + 1
-		token = data[:advance]
+		if nearestTerminator == len(data)-1 {
+			// The nearest terminator is either '\n' or '\r' at the end of the
+			// current search space. We need to expand the search space to
+			// ensure we are observing the full terminator sequence.
+			advance = 0
+			token = nil
+		} else {
+			advance = nearestTerminator + 1
+			token = data[:advance]
+		}
 		return
 	}
 
