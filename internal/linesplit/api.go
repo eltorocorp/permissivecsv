@@ -11,34 +11,16 @@ import (
 // Splitter emits certain information about the status of the splitter,
 // such as the most recently read record, terminator, terminator length, etc...
 type Splitter struct {
-	currentRawRecord        string
-	currentTerminator       string
-	currentTerminatorLength int
-	atEOF                   bool
-	currentRawUpperOffset   uint64
-}
-
-// CurrentRawRecord returns the record that was most recently idenfied by the
-// splitter.
-func (l *Splitter) CurrentRawRecord() string {
-	return l.currentRawRecord
+	currentTerminator []byte
 }
 
 // CurrentTerminator returns the terminator that was most recently identified
-// by the splitter.
-func (l *Splitter) CurrentTerminator() string {
+// by the splitter. This value will be nil if no data was returned in the
+// most recent Split. This value will be an empty slice if data was returned,
+// but contained no terminator. Otherwise, if a terminator was identified within
+// the slice, that terminator is returned.
+func (l *Splitter) CurrentTerminator() []byte {
 	return l.currentTerminator
-}
-
-// CurrentTerminatorLength returns the length of the terminator that was most
-// recently identified by the splitter.
-func (l *Splitter) CurrentTerminatorLength() int {
-	return len(l.CurrentTerminator())
-}
-
-// EOF returns true if the splitter has reached the end of the file.
-func (l *Splitter) EOF() bool {
-	return l.atEOF
 }
 
 // Split performs the line splitting operations.
@@ -49,6 +31,7 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 		dos    = "\r\n"
 		invdos = "\n\r"
 	)
+	l.currentTerminator = nil
 	str := string(data)
 	DOSIndex := util.IndexNonQuoted(str, dos)
 	invertedDOSIndex := util.IndexNonQuoted(str, invdos)
@@ -60,6 +43,7 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 	if invertedDOSIndex != -1 &&
 		newlineIndex == invertedDOSIndex &&
 		carriageReturnIndex > newlineIndex {
+		l.currentTerminator = []byte(invdos)
 		nearestTerminator = invertedDOSIndex
 	}
 
@@ -67,8 +51,10 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 		carriageReturnIndex == DOSIndex &&
 		newlineIndex > carriageReturnIndex {
 		if nearestTerminator == -1 {
+			l.currentTerminator = []byte(dos)
 			nearestTerminator = DOSIndex
 		} else if DOSIndex < nearestTerminator {
+			l.currentTerminator = []byte(dos)
 			nearestTerminator = DOSIndex
 		}
 	}
@@ -80,11 +66,13 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 	}
 
 	if newlineIndex != -1 {
+		l.currentTerminator = []byte(nl)
 		nearestTerminator = newlineIndex
 	}
 
 	if carriageReturnIndex != -1 {
 		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
+			l.currentTerminator = []byte(cr)
 			nearestTerminator = carriageReturnIndex
 		}
 	}
@@ -96,6 +84,7 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 			// ensure we are observing the full terminator sequence.
 			advance = 0
 			token = nil
+			l.currentTerminator = nil
 		} else {
 			advance = nearestTerminator + 1
 			token = data[:advance]
@@ -109,5 +98,8 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 
 	token = data
 	err = bufio.ErrFinalToken
+	if data != nil {
+		l.currentTerminator = []byte{}
+	}
 	return
 }
