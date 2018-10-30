@@ -14,6 +14,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/eltorocorp/permissivecsv/internal/linesplit"
 	"github.com/eltorocorp/permissivecsv/internal/util"
 )
 
@@ -103,6 +104,7 @@ type Scanner struct {
 	recordsScanned        int64
 	scanSummary           *ScanSummary
 	checkedForHeader      bool
+	splitter              *linesplit.Splitter
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
@@ -146,88 +148,10 @@ func NewScanner(r io.ReadSeeker, headerCheck HeaderCheck) *Scanner {
 		headerCheck: headerCheck,
 		reader:      r,
 		scanner:     internalScanner,
+		splitter:    new(linesplit.Splitter),
 	}
-	internalScanner.Split(s.recordSplitter)
+	internalScanner.Split(s.splitter.Split)
 	return s
-}
-
-func (s *Scanner) recordSplitter(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	const (
-		nl     = "\n"
-		cr     = "\r"
-		dos    = "\r\n"
-		invdos = "\n\r"
-	)
-	str := string(data)
-	DOSIndex := util.IndexNonQuoted(str, dos)
-	invertedDOSIndex := util.IndexNonQuoted(str, invdos)
-	newlineIndex := util.IndexNonQuoted(str, nl)
-	carriageReturnIndex := util.IndexNonQuoted(str, cr)
-
-	nearestTerminator := -1
-
-	if invertedDOSIndex != -1 &&
-		newlineIndex == invertedDOSIndex &&
-		carriageReturnIndex > newlineIndex {
-		s.currentRawUpperOffset = int64(invertedDOSIndex + 2)
-		s.currentTerminator = invdos
-		nearestTerminator = invertedDOSIndex
-	}
-
-	if DOSIndex != -1 &&
-		carriageReturnIndex == DOSIndex &&
-		newlineIndex > carriageReturnIndex {
-		if nearestTerminator == -1 {
-			s.currentRawUpperOffset = int64(DOSIndex + 2)
-			s.currentTerminator = dos
-			nearestTerminator = DOSIndex
-		} else if DOSIndex < nearestTerminator {
-			s.currentRawUpperOffset = int64(DOSIndex + 2)
-			s.currentTerminator = dos
-			nearestTerminator = DOSIndex
-		}
-	}
-
-	if nearestTerminator != -1 {
-		advance = nearestTerminator + 2
-		token = data[:nearestTerminator]
-		return
-	}
-
-	if newlineIndex != -1 {
-		s.currentRawUpperOffset = int64(newlineIndex + 1)
-		s.currentTerminator = nl
-		nearestTerminator = newlineIndex
-	}
-
-	if carriageReturnIndex != -1 {
-		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
-			s.currentRawUpperOffset = int64(carriageReturnIndex + 1)
-			s.currentTerminator = cr
-			nearestTerminator = carriageReturnIndex
-		}
-	}
-
-	if nearestTerminator != -1 {
-		advance = nearestTerminator + 1
-		token = data[:nearestTerminator+len(s.currentTerminator)]
-		return
-	}
-
-	if !atEOF {
-		return
-	}
-
-	// if the data length is zero, this will drive the offset value to -1,
-	// which may be used elsewhere in the code as a sentinal value.
-	if len(data) == 0 {
-		s.currentRawUpperOffset = int64(len(data) - 1)
-	} else {
-		s.currentRawUpperOffset = int64(len(data))
-	}
-	token = data
-	err = bufio.ErrFinalToken
-	return
 }
 
 // Scan advances the scanner to the next record, which will then be available
@@ -257,7 +181,7 @@ func (s *Scanner) Scan() bool {
 			s.reader.Seek(0, io.SeekStart)
 		}
 		s.scanner = bufio.NewScanner(s.reader)
-		s.scanner.Split(s.recordSplitter)
+		s.scanner.Split(s.splitter.Split)
 		s.checkedForHeader = true
 	} else {
 		s.firstRecord = nil
@@ -296,7 +220,6 @@ func (s *Scanner) scan() bool {
 	}
 
 	s.scanSummary.RecordCount++
-	s.currentRawRecord = s.scanner.Text()
 	var trimmedRawRecord string
 	if strings.HasSuffix(s.currentRawRecord, s.currentTerminator) {
 		trimmedRawRecord = s.currentRawRecord[:len(s.currentRawRecord)-len(s.currentTerminator)]
