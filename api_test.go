@@ -481,34 +481,34 @@ func Test_Partition(t *testing.T) {
 		excludeHeader       bool
 		expPartitions       []*permissivecsv.Segment
 	}{
-		// {
-		// 	name:                "nil reader",
-		// 	data:                nil,
-		// 	recordsPerPartition: 10,
-		// 	excludeHeader:       false,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     -1,
-		// 			LowerOffset: -1,
-		// 			UpperOffset: -1,
-		// 			SegmentSize: -1,
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:                "empty file",
-		// 	data:                strings.NewReader(""),
-		// 	recordsPerPartition: 10,
-		// 	excludeHeader:       false,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     1,
-		// 			LowerOffset: 0,
-		// 			UpperOffset: 0,
-		// 			SegmentSize: 0,
-		// 		},
-		// 	},
-		// },
+		{
+			name:                "nil reader",
+			data:                nil,
+			recordsPerPartition: 10,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     -1,
+					LowerOffset: -1,
+					UpperOffset: -1,
+					SegmentSize: -1,
+				},
+			},
+		},
+		{
+			name:                "empty file",
+			data:                strings.NewReader(""),
+			recordsPerPartition: 10,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 0,
+					SegmentSize: 0,
+				},
+			},
+		},
 		{
 			name:                "simple file",
 			data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l"),

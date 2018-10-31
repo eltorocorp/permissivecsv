@@ -491,6 +491,10 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			})
 	}
 
+	if len(segments) == 1 && s.scanner.Text() == "" {
+		segments[0].UpperOffset = 0
+	}
+
 	summary := s.Summary()
 	if summary.Err == ErrReaderIsNil {
 		segments = append(segments, &Segment{
