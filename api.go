@@ -92,15 +92,16 @@ const (
 // replacements are made, the type of replacement, record number, and original
 // data are all immediately available via the Summary method.
 type Scanner struct {
-	headerCheck        HeaderCheck
-	currentRecord      []string
-	reader             io.ReadSeeker
-	scanner            *bufio.Scanner
-	expectedFieldCount int
-	recordsScanned     int64
-	scanSummary        *ScanSummary
-	checkedForHeader   bool
-	splitter           *linesplit.Splitter
+	headerCheck                    HeaderCheck
+	currentRecord                  []string
+	reader                         io.ReadSeeker
+	scanner                        *bufio.Scanner
+	expectedFieldCount             int
+	recordsScanned                 int64
+	scanSummary                    *ScanSummary
+	checkedForHeader               bool
+	splitter                       *linesplit.Splitter
+	leadingTerminatorCheckComplete bool
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
@@ -178,6 +179,7 @@ func (s *Scanner) Scan() bool {
 		s.scanner = bufio.NewScanner(s.reader)
 		s.scanner.Split(s.splitter.Split)
 		s.checkedForHeader = true
+		s.leadingTerminatorCheckComplete = false
 	} else {
 		s.firstRecord = nil
 		s.secondRecord = nil
@@ -214,10 +216,20 @@ func (s *Scanner) scan() bool {
 		return false
 	}
 
-	s.scanSummary.RecordCount++
 	rawRecord := s.scanner.Text()
-	var trimmedRawRecord string
 	currentTerminator := s.splitter.CurrentTerminator()
+	for !s.leadingTerminatorCheckComplete && more {
+		if rawRecord == string(currentTerminator) {
+			more = s.scanner.Scan()
+			rawRecord = s.scanner.Text()
+			currentTerminator = s.splitter.CurrentTerminator()
+			continue
+		}
+		s.leadingTerminatorCheckComplete = true
+	}
+
+	var trimmedRawRecord string
+	s.scanSummary.RecordCount++
 	if len(currentTerminator) > 0 && strings.HasSuffix(rawRecord, string(currentTerminator)) {
 		trimmedRawRecord = rawRecord[:len(rawRecord)-len(currentTerminator)]
 	} else {
