@@ -474,6 +474,9 @@ func Test_HeaderCheckCallback(t *testing.T) {
 }
 
 func Test_Partition(t *testing.T) {
+	// The partition tests specifically target segment generation capabilities,
+	// and presume that the underlaying record splitter is properly identifying
+	// terminators and returning raw records to Split as intended.
 	tests := []struct {
 		name                string
 		data                io.ReadSeeker
@@ -510,7 +513,7 @@ func Test_Partition(t *testing.T) {
 			},
 		},
 		{
-			name:                "simple file",
+			name:                "one byte long terminator",
 			data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l"),
 			recordsPerPartition: 2,
 			excludeHeader:       false,
@@ -536,7 +539,7 @@ func Test_Partition(t *testing.T) {
 			},
 		},
 		{
-			name:                "simple file dos endings",
+			name:                "two byte long terminator",
 			data:                strings.NewReader("a,b\r\nc,d\r\ne,f\r\ng,h\r\ni,j\r\nk,l"),
 			recordsPerPartition: 2,
 			excludeHeader:       false,
@@ -561,38 +564,38 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	name:                "partial final segment",
-		// 	data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
-		// 	recordsPerPartition: 2,
-		// 	excludeHeader:       false,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     1,
-		// 			LowerOffset: 0,
-		// 			UpperOffset: 6,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     2,
-		// 			LowerOffset: 8,
-		// 			UpperOffset: 14,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     3,
-		// 			LowerOffset: 16,
-		// 			UpperOffset: 22,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     4,
-		// 			LowerOffset: 24,
-		// 			UpperOffset: 26,
-		// 			SegmentSize: 3,
-		// 		},
-		// 	},
-		// },
+		{
+			name:                "one byte term with partial final segment",
+			data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 6,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 8,
+					UpperOffset: 14,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 16,
+					UpperOffset: 22,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     4,
+					LowerOffset: 24,
+					UpperOffset: 26,
+					SegmentSize: 3,
+				},
+			},
+		},
 		// {
 		// 	name:                "mixed terminators",
 		// 	data:                strings.NewReader("a,b\r\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),

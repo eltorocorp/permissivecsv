@@ -462,21 +462,30 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	segments := []*Segment{}
 	currentRawRecord := ""
 	recordsInCurrentSegment := 0
+	previousTerminator := []byte(nil)
 	for s.Scan() {
+		currentTerminator := s.splitter.CurrentTerminator()
 		if recordsInCurrentSegment == n {
+			// if we're here, the current segment does not have room for the
+			// record that was just loaded by Scan. So, we flush this segment
+			// and prepare a new one. The unflushed segment currently contains
+			// data from the past calls Scan. Thus, we have to calculate offsets
+			// based on the terminator from the last call to Scan, not the
+			// terminator from the current call to Scan.
 			ordinal++
 			segments = append(segments, &Segment{
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
 				UpperOffset: upperOffset - int64(1),
-				SegmentSize: int64(len(currentRawRecord) - len(s.splitter.CurrentTerminator())),
+				SegmentSize: int64(len(currentRawRecord) - len(previousTerminator)),
 			})
 			recordsInCurrentSegment = 0
 			currentRawRecord = ""
-			lowerOffset = upperOffset + int64(len(s.splitter.CurrentTerminator()))
+			lowerOffset = upperOffset + int64(len(previousTerminator))
 		}
 		currentRawRecord += s.scanner.Text()
-		upperOffset = lowerOffset + int64(len(currentRawRecord)-len(s.splitter.CurrentTerminator()))
+		upperOffset = lowerOffset + int64(len(currentRawRecord)-len(currentTerminator))
+		previousTerminator = currentTerminator
 		recordsInCurrentSegment++
 	}
 
