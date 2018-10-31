@@ -460,25 +460,37 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	)
 	s.Reset()
 	segments := []*Segment{}
-	currentSegment := new(Segment)
+	currentRawRecord := ""
 	recordsInCurrentSegment := 0
 	for s.Scan() {
 		if recordsInCurrentSegment == n {
-			segments = append(segments, currentSegment)
 			ordinal++
-			recordsInCurrentSegment = 0
-			currentSegment = &Segment{
+			segments = append(segments, &Segment{
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
-				UpperOffset: upperOffset,
-				SegmentSize: 0,
-			}
+				UpperOffset: upperOffset - int64(len(s.splitter.CurrentTerminator())),
+				SegmentSize: upperOffset - lowerOffset,
+			})
+			recordsInCurrentSegment = 0
+			currentRawRecord = ""
+			lowerOffset = upperOffset + int64(len(s.splitter.CurrentTerminator()))
 		}
-		currentRecordLength := len(s.CurrentRecord())
-		lowerOffset = upperOffset
-		upperOffset = lowerOffset + int64(currentRecordLength)
+		currentRawRecord += s.scanner.Text()
+		upperOffset = lowerOffset + int64(len(currentRawRecord)-len(s.splitter.CurrentTerminator()))
 		recordsInCurrentSegment++
 	}
+
+	if recordsInCurrentSegment > 0 {
+		ordinal++
+		segments = append(segments,
+			&Segment{
+				Ordinal:     ordinal,
+				LowerOffset: lowerOffset,
+				UpperOffset: upperOffset - int64(len(s.splitter.CurrentTerminator())) - 1,
+				SegmentSize: upperOffset - lowerOffset,
+			})
+	}
+
 	summary := s.Summary()
 	if summary.Err == ErrReaderIsNil {
 		segments = append(segments, &Segment{
