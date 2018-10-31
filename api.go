@@ -460,14 +460,24 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	)
 	s.Reset()
 	segments := []*Segment{}
+	currentSegment := new(Segment)
+	recordsInCurrentSegment := 0
 	for s.Scan() {
-		ordinal++
-		segments = append(segments, &Segment{
-			Ordinal:     ordinal,
-			LowerOffset: lowerOffset,
-			UpperOffset: upperOffset,
-			SegmentSize: 0,
-		})
+		if recordsInCurrentSegment == n {
+			segments = append(segments, currentSegment)
+			ordinal++
+			recordsInCurrentSegment = 0
+			currentSegment = &Segment{
+				Ordinal:     ordinal,
+				LowerOffset: lowerOffset,
+				UpperOffset: upperOffset,
+				SegmentSize: 0,
+			}
+		}
+		currentRecordLength := len(s.CurrentRecord())
+		lowerOffset = upperOffset
+		upperOffset = lowerOffset + int64(currentRecordLength)
+		recordsInCurrentSegment++
 	}
 	summary := s.Summary()
 	if summary.Err == ErrReaderIsNil {
