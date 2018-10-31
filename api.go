@@ -92,16 +92,15 @@ const (
 // replacements are made, the type of replacement, record number, and original
 // data are all immediately available via the Summary method.
 type Scanner struct {
-	headerCheck           HeaderCheck
-	currentRecord         []string
-	currentRawUpperOffset int64
-	reader                io.ReadSeeker
-	scanner               *bufio.Scanner
-	expectedFieldCount    int
-	recordsScanned        int64
-	scanSummary           *ScanSummary
-	checkedForHeader      bool
-	splitter              *linesplit.Splitter
+	headerCheck        HeaderCheck
+	currentRecord      []string
+	reader             io.ReadSeeker
+	scanner            *bufio.Scanner
+	expectedFieldCount int
+	recordsScanned     int64
+	scanSummary        *ScanSummary
+	checkedForHeader   bool
+	splitter           *linesplit.Splitter
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
@@ -173,7 +172,6 @@ func (s *Scanner) Scan() bool {
 		s.recordsScanned = 0
 		s.currentRecord = nil
 		s.scanSummary = nil
-		s.currentRawUpperOffset = 0
 		if s.reader != nil {
 			s.reader.Seek(0, io.SeekStart)
 		}
@@ -455,69 +453,30 @@ type Segment struct {
 // top of the file. Thus, using Partition in conjunction with Scan could have
 // undesired results.
 func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
-	panic("not implemented")
-	// s.Reset()
-	// partitions := []*Segment{}
-	// ordinal := int64(0)
-	// currentLowerOffset := int64(0)
-	// currentUpperOffset := int64(-1)
-	// i := 0
-	// segmentRawRecord := ""
-	// for s.Scan() {
-
-	// 	// recordSplitter will set the offset to -1 if it reached the end the
-	// 	// file and the remaining buffer is empty.
-	// 	if s.currentRawUpperOffset == -1 {
-	// 		partitions = append(partitions, &Segment{
-	// 			Ordinal:     1,
-	// 			LowerOffset: -1,
-	// 			UpperOffset: -1,
-	// 			SegmentSize: 0,
-	// 		})
-	// 		break
-	// 	}
-
-	// 	if excludeHeader && s.RecordIsHeader() {
-	// 		currentLowerOffset = s.currentRawUpperOffset + 1
-	// 		continue
-	// 	}
-
-	// 	segmentRawRecord += s.currentRawRecord
-	// 	i++
-	// 	if i == n {
-	// 		if strings.HasSuffix(segmentRawRecord, s.currentTerminator) {
-	// 			segmentRawRecord = segmentRawRecord[:len(segmentRawRecord)-len(s.currentTerminator)]
-	// 		}
-	// 		log.Println("Current SegmentRawRecord: ", segmentRawRecord)
-	// 		currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
-	// 		ordinal++
-	// 		partitions = append(partitions, &Segment{
-	// 			Ordinal:     ordinal,
-	// 			LowerOffset: currentLowerOffset,
-	// 			UpperOffset: currentUpperOffset,
-	// 			SegmentSize: currentUpperOffset - currentLowerOffset + 1,
-	// 		})
-	// 		currentLowerOffset = currentUpperOffset + int64(len(s.currentTerminator)) + 1
-	// 		segmentRawRecord = ""
-	// 		i = 0
-	// 	}
-	// }
-
-	// // Flushing any partially filled segment.
-	// // If i > 0, at least one record read for a new segment in the last scan
-	// // loop.
-	// // If i < n, the last Scan loop was not able to completely fill the final
-	// // segment before exiting.
-	// if i > 0 && i < n {
-	// 	ordinal++
-	// 	currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
-	// 	partitions = append(partitions, &Segment{
-	// 		Ordinal:     ordinal,
-	// 		LowerOffset: currentLowerOffset,
-	// 		UpperOffset: currentUpperOffset,
-	// 		SegmentSize: currentUpperOffset - currentLowerOffset + 1,
-	// 	})
-	// }
-
-	// return partitions
+	var (
+		ordinal     int64
+		lowerOffset int64
+		upperOffset int64
+	)
+	s.Reset()
+	segments := []*Segment{}
+	for s.Scan() {
+		ordinal++
+		segments = append(segments, &Segment{
+			Ordinal:     ordinal,
+			LowerOffset: lowerOffset,
+			UpperOffset: upperOffset,
+			SegmentSize: 0,
+		})
+	}
+	summary := s.Summary()
+	if summary.Err == ErrReaderIsNil {
+		segments = append(segments, &Segment{
+			Ordinal:     -1,
+			LowerOffset: -1,
+			UpperOffset: -1,
+			SegmentSize: -1,
+		})
+	}
+	return segments
 }
