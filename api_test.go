@@ -133,41 +133,42 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			},
 		},
 		{
-			// permissivecsv allows records to end with a dangline terminator,
-			// and presumes that to mean the record contains an implicit nil
-			// record.
+			// permissivecsv ignores bare terminators at the end of the file.
 			name:  "dangling terminator",
-			input: "a,a,a\nb,b,b\nc,c,c\n",
+			input: "a,a,a\nb,b,b\nc,c,c\n\n\n\n",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
 				[]string{"c", "c", "c"},
-				[]string{"", "", ""},
 			},
 		},
 		{
-			// permissivecsv presumes that the first record of a file is correct
-			// thus, if the first thing it encounters is a terminator, it
-			// concludes that the head record contains a single empty field.
-			// Since it assumes that is correct, it presumes each subsequent
-			// record should also have one field, and truncates them. This is
-			// the expected behavior of the system given the assumptions it
-			// makes.
+			// permissivecsv ignore bare terminators at the top of the file
 			name:  "leading terminator",
-			input: "\na,a,a\nb,b,b\nc,c,c",
+			input: "\n\n\n\na,a,a\nb,b,b\nc,c,c",
 			result: [][]string{
-				[]string{""},
-				[]string{"a"},
-				[]string{"b"},
-				[]string{"c"},
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"c", "c", "c"},
 			},
 		},
 		{
-			// similar to the "loitering terminator" case above, if the first
-			// thing permissivecsv encounters is an empty field followed by a
-			// terminator, it assumes that to be correct. All subsequent
-			// records are expected to also only have one field, and are
-			// truncated as necessary.
+			// permissivecsv respects implied empty records
+			name:  "empty records",
+			input: "a,a,a\nb,b,b\n\n\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"", "", ""},
+				[]string{"", "", ""},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// if the first thing permissivecsv encounters is an empty field
+			// followed by a terminator, it assumes that to be correct. All
+			// subsequent records are expected to also only have one field, and
+			// are truncated as necessary.
 			name:  "loitering empty field",
 			input: "\"\"\na,a,a\nb,b,b\nc,c,c",
 			result: [][]string{
@@ -178,11 +179,7 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			},
 		},
 		{
-			// permissivecsv doesn't care about mixing terminators. It always
-			// just uses the first terminator that it encounters.
-			// "composite" terminators, such as the DOS (/r/n) and the inverted
-			// DOS (/n/r) terminator, take precedence over "atomic" terminators,
-			// such as newline ("\n") or carriage return ("\r").
+			// permissivecsv doesn't care about mixing terminators.
 			name:  "mixed terminators",
 			input: "a,a\nb,b\nc,c\r\nd,d\ne,e\n\rf,f",
 			result: [][]string{
@@ -739,10 +736,10 @@ func Test_Partition(t *testing.T) {
 			},
 		},
 		// New Cases:
-		// 1) terminators between segments are stripped
-		// 2) leading terminators retained for implied record
-		// 3) trailing terminator retained for implied record
-		// 4) terminator retained for empty record
+		// These need to be added for Scan tests as well.
+		// leading terminators are ignored
+		// trailing terminators are ignored
+		// empty records are respected
 	}
 	for _, test := range tests {
 		testFn := func(t *testing.T) {

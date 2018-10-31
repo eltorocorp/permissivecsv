@@ -42,7 +42,11 @@ When scanning a search space for a terminator, PermissiveCSV will select the fir
  - Terminators that fall anywhere inside a pair of double quotes are ignored. 
  - Outside of double quotes, potential terminators are ignored only if a more likely terminator has been selected for the current record. 
    - Example: If a potential record contains a carriage return and a newline separated by one or more other characters, the newline will be used as the terminator, and the carriage return will be ignored (even though it may not be quoted).
-
+ - Leading terminators are ignored.
+   - Leading terminators are one or more terminator token at the top of a file with no data present between tokens.
+ - Dangling terminators are ignored.
+   - Dangling terminators are one or more terminator token at the end of a file with no apparent data between tokens. 
+ 
 Inconsistent-Record-Length Handling
 -----------------------------------
 PermissiveCSV presumes that the number of fields in the first record of the file is the intended field count for the entire file.
