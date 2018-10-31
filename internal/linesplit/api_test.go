@@ -28,6 +28,15 @@ func Test_Split(t *testing.T) {
 			expCurrentTerminator: nil,
 		},
 		{
+			name:                 "empty data at EOF",
+			data:                 []byte{},
+			atEOF:                true,
+			expAdvance:           0,
+			expToken:             []byte{},
+			expErr:               bufio.ErrFinalToken,
+			expCurrentTerminator: []byte{},
+		},
+		{
 			// In the initial read, Split should return 0, nil, nil, requesting
 			// that the search space be increased.
 			name:                 "no terminator and not EOF",
@@ -121,10 +130,10 @@ func Test_Split(t *testing.T) {
 		},
 		// A terminator at the end of the search space (but not EOF) should
 		// always trigger a search space extension.
+		// Note that these tests use \r\n as the test case to avoid
+		// collision with the partial terminator search space extension
+		// requirement.
 		{
-			// Note that this test uses \r\n as the test case to avoid
-			// collision with the partial terminator search space extension
-			// requirement.
 			name:                 "terminator at end of search space",
 			data:                 []byte("a,b,c\r\n"),
 			atEOF:                false,
@@ -132,6 +141,15 @@ func Test_Split(t *testing.T) {
 			expToken:             nil,
 			expErr:               nil,
 			expCurrentTerminator: nil,
+		},
+		{
+			name:                 "terminator at end of file",
+			data:                 []byte("a,b,c\r\n"),
+			atEOF:                true,
+			expAdvance:           7,
+			expToken:             []byte("a,b,c\r\n"),
+			expErr:               nil,
+			expCurrentTerminator: []byte{13, 10},
 		},
 	}
 
