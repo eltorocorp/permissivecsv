@@ -60,8 +60,14 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 	}
 
 	if nearestTerminator != -1 {
-		advance = nearestTerminator + 2
-		token = data[:advance]
+		if nearestTerminator == len(data)-2 {
+			l.currentTerminator = nil
+			advance = 0
+			token = nil
+		} else {
+			advance = nearestTerminator + 2
+			token = data[:advance]
+		}
 		return
 	}
 
@@ -71,7 +77,7 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 	}
 
 	if carriageReturnIndex != -1 {
-		if nearestTerminator == -1 || carriageReturnIndex < nearestTerminator {
+		if nearestTerminator == -1 {
 			l.currentTerminator = []byte(cr)
 			nearestTerminator = carriageReturnIndex
 		}
@@ -93,6 +99,7 @@ func (l *Splitter) Split(data []byte, atEOF bool) (advance int, token []byte, er
 	}
 
 	if !atEOF {
+		// requesting a larger search space
 		return
 	}
 

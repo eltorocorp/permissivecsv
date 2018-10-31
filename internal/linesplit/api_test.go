@@ -107,6 +107,32 @@ func Test_Split(t *testing.T) {
 			expErr:               nil,
 			expCurrentTerminator: nil,
 		},
+		// Since bare carriage returns are quite rare to be used as terminators,
+		// we only want to select a carriage return as the terminator if no
+		// other more likely terminator exists within the current search space.
+		{
+			name:                 "prefer newline over carriage return",
+			data:                 []byte("a,b\rc,d\ne,f,g,h"),
+			atEOF:                false,
+			expAdvance:           8,
+			expToken:             []byte("a,b\rc,d\n"),
+			expErr:               nil,
+			expCurrentTerminator: []byte{10},
+		},
+		// A terminator at the end of the search space (but not EOF) should
+		// always trigger a search space extension.
+		{
+			// Note that this test uses \r\n as the test case to avoid
+			// collision with the partial terminator search space extension
+			// requirement.
+			name:                 "terminator at end of search space",
+			data:                 []byte("a,b,c\r\n"),
+			atEOF:                false,
+			expAdvance:           0,
+			expToken:             nil,
+			expErr:               nil,
+			expCurrentTerminator: nil,
+		},
 	}
 
 	for _, test := range tests {

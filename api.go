@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"strings"
 	"text/template"
 
@@ -96,8 +95,6 @@ type Scanner struct {
 	headerCheck           HeaderCheck
 	currentRecord         []string
 	currentRawUpperOffset int64
-	currentTerminator     string
-	currentRawRecord      string
 	reader                io.ReadSeeker
 	scanner               *bufio.Scanner
 	expectedFieldCount    int
@@ -220,11 +217,13 @@ func (s *Scanner) scan() bool {
 	}
 
 	s.scanSummary.RecordCount++
+	rawRecord := s.scanner.Text()
 	var trimmedRawRecord string
-	if strings.HasSuffix(s.currentRawRecord, s.currentTerminator) {
-		trimmedRawRecord = s.currentRawRecord[:len(s.currentRawRecord)-len(s.currentTerminator)]
+	currentTerminator := s.splitter.CurrentTerminator()
+	if len(currentTerminator) > 0 && strings.HasSuffix(rawRecord, string(currentTerminator)) {
+		trimmedRawRecord = rawRecord[:len(rawRecord)-len(currentTerminator)]
 	} else {
-		trimmedRawRecord = s.currentRawRecord
+		trimmedRawRecord = rawRecord
 	}
 
 	if trimmedRawRecord == "" {
@@ -456,68 +455,69 @@ type Segment struct {
 // top of the file. Thus, using Partition in conjunction with Scan could have
 // undesired results.
 func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
-	s.Reset()
-	partitions := []*Segment{}
-	ordinal := int64(0)
-	currentLowerOffset := int64(0)
-	currentUpperOffset := int64(-1)
-	i := 0
-	segmentRawRecord := ""
-	for s.Scan() {
+	panic("not implemented")
+	// s.Reset()
+	// partitions := []*Segment{}
+	// ordinal := int64(0)
+	// currentLowerOffset := int64(0)
+	// currentUpperOffset := int64(-1)
+	// i := 0
+	// segmentRawRecord := ""
+	// for s.Scan() {
 
-		// recordSplitter will set the offset to -1 if it reached the end the
-		// file and the remaining buffer is empty.
-		if s.currentRawUpperOffset == -1 {
-			partitions = append(partitions, &Segment{
-				Ordinal:     1,
-				LowerOffset: -1,
-				UpperOffset: -1,
-				SegmentSize: 0,
-			})
-			break
-		}
+	// 	// recordSplitter will set the offset to -1 if it reached the end the
+	// 	// file and the remaining buffer is empty.
+	// 	if s.currentRawUpperOffset == -1 {
+	// 		partitions = append(partitions, &Segment{
+	// 			Ordinal:     1,
+	// 			LowerOffset: -1,
+	// 			UpperOffset: -1,
+	// 			SegmentSize: 0,
+	// 		})
+	// 		break
+	// 	}
 
-		if excludeHeader && s.RecordIsHeader() {
-			currentLowerOffset = s.currentRawUpperOffset + 1
-			continue
-		}
+	// 	if excludeHeader && s.RecordIsHeader() {
+	// 		currentLowerOffset = s.currentRawUpperOffset + 1
+	// 		continue
+	// 	}
 
-		segmentRawRecord += s.currentRawRecord
-		i++
-		if i == n {
-			if strings.HasSuffix(segmentRawRecord, s.currentTerminator) {
-				segmentRawRecord = segmentRawRecord[:len(segmentRawRecord)-len(s.currentTerminator)]
-			}
-			log.Println("Current SegmentRawRecord: ", segmentRawRecord)
-			currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
-			ordinal++
-			partitions = append(partitions, &Segment{
-				Ordinal:     ordinal,
-				LowerOffset: currentLowerOffset,
-				UpperOffset: currentUpperOffset,
-				SegmentSize: currentUpperOffset - currentLowerOffset + 1,
-			})
-			currentLowerOffset = currentUpperOffset + int64(len(s.currentTerminator)) + 1
-			segmentRawRecord = ""
-			i = 0
-		}
-	}
+	// 	segmentRawRecord += s.currentRawRecord
+	// 	i++
+	// 	if i == n {
+	// 		if strings.HasSuffix(segmentRawRecord, s.currentTerminator) {
+	// 			segmentRawRecord = segmentRawRecord[:len(segmentRawRecord)-len(s.currentTerminator)]
+	// 		}
+	// 		log.Println("Current SegmentRawRecord: ", segmentRawRecord)
+	// 		currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
+	// 		ordinal++
+	// 		partitions = append(partitions, &Segment{
+	// 			Ordinal:     ordinal,
+	// 			LowerOffset: currentLowerOffset,
+	// 			UpperOffset: currentUpperOffset,
+	// 			SegmentSize: currentUpperOffset - currentLowerOffset + 1,
+	// 		})
+	// 		currentLowerOffset = currentUpperOffset + int64(len(s.currentTerminator)) + 1
+	// 		segmentRawRecord = ""
+	// 		i = 0
+	// 	}
+	// }
 
-	// Flushing any partially filled segment.
-	// If i > 0, at least one record read for a new segment in the last scan
-	// loop.
-	// If i < n, the last Scan loop was not able to completely fill the final
-	// segment before exiting.
-	if i > 0 && i < n {
-		ordinal++
-		currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
-		partitions = append(partitions, &Segment{
-			Ordinal:     ordinal,
-			LowerOffset: currentLowerOffset,
-			UpperOffset: currentUpperOffset,
-			SegmentSize: currentUpperOffset - currentLowerOffset + 1,
-		})
-	}
+	// // Flushing any partially filled segment.
+	// // If i > 0, at least one record read for a new segment in the last scan
+	// // loop.
+	// // If i < n, the last Scan loop was not able to completely fill the final
+	// // segment before exiting.
+	// if i > 0 && i < n {
+	// 	ordinal++
+	// 	currentUpperOffset = currentLowerOffset + int64(len(segmentRawRecord)) - 1
+	// 	partitions = append(partitions, &Segment{
+	// 		Ordinal:     ordinal,
+	// 		LowerOffset: currentLowerOffset,
+	// 		UpperOffset: currentUpperOffset,
+	// 		SegmentSize: currentUpperOffset - currentLowerOffset + 1,
+	// 	})
+	// }
 
-	return partitions
+	// return partitions
 }
