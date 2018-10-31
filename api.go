@@ -468,8 +468,8 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			segments = append(segments, &Segment{
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
-				UpperOffset: upperOffset - int64(len(s.splitter.CurrentTerminator())),
-				SegmentSize: upperOffset - lowerOffset,
+				UpperOffset: upperOffset - int64(1),
+				SegmentSize: int64(len(currentRawRecord) - len(s.splitter.CurrentTerminator())),
 			})
 			recordsInCurrentSegment = 0
 			currentRawRecord = ""
@@ -487,7 +487,7 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
 				UpperOffset: upperOffset - int64(len(s.splitter.CurrentTerminator())) - 1,
-				SegmentSize: upperOffset - lowerOffset,
+				SegmentSize: int64(len(currentRawRecord) - len(s.splitter.CurrentTerminator())),
 			})
 	}
 
