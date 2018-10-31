@@ -596,7 +596,39 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
-		// {
+		{
+			name:                "two byte term with partial final segment",
+			data:                strings.NewReader("a,b\r\nc,d\r\ne,f\r\ng,h\r\ni,j\r\nk,l\r\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 7,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 10,
+					UpperOffset: 17,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 20,
+					UpperOffset: 27,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     4,
+					LowerOffset: 30,
+					UpperOffset: 32,
+					SegmentSize: 3,
+				},
+			},
+		},
+
 		// 	name:                "mixed terminators",
 		// 	data:                strings.NewReader("a,b\r\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
 		// 	recordsPerPartition: 2,
