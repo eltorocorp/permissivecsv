@@ -463,8 +463,18 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	currentRawRecord := ""
 	recordsInCurrentSegment := 0
 	previousTerminator := []byte(nil)
+	headerEvaluated := false
 	for s.Scan() {
 		currentTerminator := s.splitter.CurrentTerminator()
+		if !headerEvaluated && excludeHeader {
+			headerEvaluated = true
+			if s.RecordIsHeader() {
+				t := s.scanner.Text()
+				lowerOffset = int64(len(t))
+				continue
+			}
+		}
+
 		if recordsInCurrentSegment == n {
 			// if we're here, the current segment does not have room for the
 			// record that was just loaded by Scan. So, we flush this segment

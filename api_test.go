@@ -628,90 +628,116 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
-
-		// 	name:                "mixed terminators",
-		// 	data:                strings.NewReader("a,b\r\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
-		// 	recordsPerPartition: 2,
-		// 	excludeHeader:       false,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     1,
-		// 			LowerOffset: 0,
-		// 			UpperOffset: 7,
-		// 			SegmentSize: 8,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     2,
-		// 			LowerOffset: 9,
-		// 			UpperOffset: 15,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     3,
-		// 			LowerOffset: 17,
-		// 			UpperOffset: 23,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     4,
-		// 			LowerOffset: 25,
-		// 			UpperOffset: 27,
-		// 			SegmentSize: 3,
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:                "variable record lengths",
-		// 	data:                strings.NewReader("a,b,c\ndd\nee,ff,gg,h\n\ni,j"),
-		// 	recordsPerPartition: 2,
-		// 	excludeHeader:       false,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     1,
-		// 			LowerOffset: 0,
-		// 			UpperOffset: 7,
-		// 			SegmentSize: 8,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     2,
-		// 			LowerOffset: 9,
-		// 			UpperOffset: 19,
-		// 			SegmentSize: 11,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     3,
-		// 			LowerOffset: 21,
-		// 			UpperOffset: 23,
-		// 			SegmentSize: 3,
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	name:                "ignore header",
-		// 	data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
-		// 	recordsPerPartition: 2,
-		// 	excludeHeader:       true,
-		// 	expPartitions: []*permissivecsv.Segment{
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     1,
-		// 			LowerOffset: 4,
-		// 			UpperOffset: 10,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     2,
-		// 			LowerOffset: 12,
-		// 			UpperOffset: 18,
-		// 			SegmentSize: 7,
-		// 		},
-		// 		&permissivecsv.Segment{
-		// 			Ordinal:     3,
-		// 			LowerOffset: 20,
-		// 			UpperOffset: 26,
-		// 			SegmentSize: 7,
-		// 		},
-		// 	},
-		// },
+		{
+			name:                "mixed terminators",
+			data:                strings.NewReader("a,b\r\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 7,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 9,
+					UpperOffset: 15,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 17,
+					UpperOffset: 23,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     4,
+					LowerOffset: 25,
+					UpperOffset: 27,
+					SegmentSize: 3,
+				},
+			},
+		},
+		{
+			name:                "variable record lengths",
+			data:                strings.NewReader("a,b,c\ndd\nee,ff,gg,h\n\ni,j"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 7,
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 9,
+					UpperOffset: 19,
+					SegmentSize: 11,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 21,
+					UpperOffset: 23,
+					SegmentSize: 3,
+				},
+			},
+		},
+		{
+			name:                "one byte term ignore header",
+			data:                strings.NewReader("a,b\nc,d\ne,f\ng,h\ni,j\nk,l\nm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       true,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 4,
+					UpperOffset: 10,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 12,
+					UpperOffset: 18,
+					SegmentSize: 7,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 20,
+					UpperOffset: 26,
+					SegmentSize: 7,
+				},
+			},
+		},
+		{
+			name:                "two byte term ignore header",
+			data:                strings.NewReader("a,b\n\rc,d\n\re,f\n\rg,h\n\ri,j\n\rk,l\n\rm,n"),
+			recordsPerPartition: 2,
+			excludeHeader:       true,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 5,  // c
+					UpperOffset: 12, // f
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 15, // g
+					UpperOffset: 22, // j
+					SegmentSize: 8,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     3,
+					LowerOffset: 25, // k
+					UpperOffset: 32, // n
+					SegmentSize: 8,
+				},
+			},
+		},
 		// New Cases:
 		// 1) terminators between segments are stripped
 		// 2) leading terminators retained for implied record
