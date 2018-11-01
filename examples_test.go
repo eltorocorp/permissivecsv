@@ -56,21 +56,16 @@ func ExampleScanner_Partition() {
 	//   {
 	//     "Ordinal": 1,
 	//     "LowerOffset": 6,
-	//     "UpperOffset": 17,
-	//     "SegmentSize": 12
+	//     "UpperOffset": 16,
+	//     "SegmentSize": 11
 	//   },
 	//   {
 	//     "Ordinal": 2,
 	//     "LowerOffset": 18,
 	//     "UpperOffset": 22,
 	//     "SegmentSize": 5
-	//   },
-	//   {
-	//     "Ordinal": 3,
-	//     "LowerOffset": 23,
-	//     "UpperOffset": 23,
-	//     "SegmentSize": 1
-	//   },	// ]
+	//   }
+	// ]
 }
 
 func ExampleScanner_RecordIsHeader_assumeHeaderExists() {

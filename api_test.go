@@ -132,16 +132,19 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 				[]string{"c", "c", "c"},
 			},
 		},
-		// {
-		// 	// permissivecsv ignores bare terminators at the end of the file.
-		// 	name:  "dangling terminator",
-		// 	input: "a,a,a\nb,b,b\nc,c,c\n\n\n\n",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"b", "b", "b"},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
+		{
+			// permissivecsv respects dangling terminators, presuming that they
+			// imply empty records.
+			name:  "dangling terminator",
+			input: "a,a,a\nb,b,b\nc,c,c\n\n",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"c", "c", "c"},
+				[]string{"", "", ""},
+				[]string{"", "", ""},
+			},
+		},
 		{
 			// permissivecsv ignore bare terminators at the top of the file
 			name:  "leading terminator",
@@ -757,8 +760,6 @@ func Test_Partition(t *testing.T) {
 		},
 
 		// New Cases:
-		// These need to be added for Scan tests as well.
-		// leading terminators are ignored
 		// trailing terminators are ignored
 		// empty records are respected
 	}
