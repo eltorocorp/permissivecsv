@@ -82,56 +82,56 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 		input  string
 		result [][]string
 	}{
-		// {
-		// 	name:   "single empty record",
-		// 	input:  "",
-		// 	result: [][]string{[]string{""}},
-		// },
-		// {
-		// 	name:   "single record",
-		// 	input:  "1,2,3",
-		// 	result: [][]string{[]string{"1", "2", "3"}},
-		// },
-		// {
-		// 	// permissivecsv accepts standard unix record terminators
-		// 	name:  "unix terminators",
-		// 	input: "a,a,a\nb,b,b\nc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"b", "b", "b"},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
-		// {
-		// 	// permissivecsv accepts standard DOS record terminators
-		// 	name:  "DOS terminators",
-		// 	input: "a,a,a\r\nb,b,b\r\nc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"b", "b", "b"},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
-		// {
-		// 	// permissivecsv accepts non-standard carriage return terminators
-		// 	name:  "carriage return as terminator",
-		// 	input: "a,a,a\rb,b,b\rc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"b", "b", "b"},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
-		// {
-		// 	// permissivecsv accepts non-standard "inverted DOS" terminators
-		// 	name:  "inverted DOS terminator",
-		// 	input: "a,a,a\n\rb,b,b\n\rc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"b", "b", "b"},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
+		{
+			name:   "single empty record",
+			input:  "",
+			result: [][]string{[]string{""}},
+		},
+		{
+			name:   "single record",
+			input:  "1,2,3",
+			result: [][]string{[]string{"1", "2", "3"}},
+		},
+		{
+			// permissivecsv accepts standard unix record terminators
+			name:  "unix terminators",
+			input: "a,a,a\nb,b,b\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// permissivecsv accepts standard DOS record terminators
+			name:  "DOS terminators",
+			input: "a,a,a\r\nb,b,b\r\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// permissivecsv accepts non-standard carriage return terminators
+			name:  "carriage return as terminator",
+			input: "a,a,a\rb,b,b\rc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// permissivecsv accepts non-standard "inverted DOS" terminators
+			name:  "inverted DOS terminator",
+			input: "a,a,a\n\rb,b,b\n\rc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"c", "c", "c"},
+			},
+		},
 		// {
 		// 	// permissivecsv ignores bare terminators at the end of the file.
 		// 	name:  "dangling terminator",
@@ -145,94 +145,94 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 		{
 			// permissivecsv ignore bare terminators at the top of the file
 			name:  "leading terminator",
-			input: "\n\n\n\na,a,a\nb,b,b\nc,c,c",
+			input: "\r\n\r\n\r\n\r\na,a,a\r\nb,b,b\r\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
 				[]string{"c", "c", "c"},
 			},
 		},
-		// {
-		// 	// permissivecsv respects implied empty records
-		// 	name:  "empty records",
-		// 	input: "a,a,a\nb,b,b\n\n\nc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"b", "b", "b"},
-		// 		[]string{"", "", ""},
-		// 		[]string{"", "", ""},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
-		// {
-		// 	// if the first thing permissivecsv encounters is an empty field
-		// 	// followed by a terminator, it assumes that to be correct. All
-		// 	// subsequent records are expected to also only have one field, and
-		// 	// are truncated as necessary.
-		// 	name:  "loitering empty field",
-		// 	input: "\"\"\na,a,a\nb,b,b\nc,c,c",
-		// 	result: [][]string{
-		// 		[]string{""},
-		// 		[]string{"a"},
-		// 		[]string{"b"},
-		// 		[]string{"c"},
-		// 	},
-		// },
-		// {
-		// 	// permissivecsv doesn't care about mixing terminators.
-		// 	name:  "mixed terminators",
-		// 	input: "a,a\nb,b\nc,c\r\nd,d\ne,e\n\rf,f",
-		// 	result: [][]string{
-		// 		[]string{"a", "a"},
-		// 		[]string{"b", "b"},
-		// 		[]string{"c", "c"},
-		// 		[]string{"d", "d"},
-		// 		[]string{"e", "e"},
-		// 		[]string{"f", "f"},
-		// 	},
-		// },
-		// {
-		// 	// permissivecsv ignores terminators that are quoted
-		// 	name:  "ignore quoted",
-		// 	input: "a,a,a\n\"\n\",b,b\nc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"\n", "b", "b"},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
-		// {
-		// 	// permissivecsv will nullify the values for all of a record's
-		// 	// fields if it encounters a bare quote. This is the most
-		// 	// consistent way to represent data that has been corrupted in this
-		// 	// manner. permissivecsv's handling of bare quotes differs from
-		// 	// the stdlib's csv.Reader. csv.Reader will concatenate all of a
-		// 	// record's data into a single field if it encounters an unpaired
-		// 	// quote. This results in a variation of data output per record that
-		// 	// encounters this issue. permissivecsv instead blanks the data
-		// 	// for the bad record, and reports the issue via Summary.
-		// 	// This reduces the number of data variants output by the Scanner,
-		// 	// while allowing the caller to still handle issues as they see fit.
-		// 	name:  "bare quotes",
-		// 	input: "a,a,a\n\"b\"b,b,b\nc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"", "", ""},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
-		// {
-		// 	// permissivecsv handles extraneous quotes the same way that it
-		// 	// handles bare quotes, by nullifying the field values of the
-		// 	// affected record.
-		// 	name:  "extraneous quote",
-		// 	input: "a,a,a\nb\"\"\"b,b,b\nc,c,c",
-		// 	result: [][]string{
-		// 		[]string{"a", "a", "a"},
-		// 		[]string{"", "", ""},
-		// 		[]string{"c", "c", "c"},
-		// 	},
-		// },
+		{
+			// permissivecsv respects implied empty records
+			name:  "empty records",
+			input: "a,a,a\nb,b,b\n\n\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"b", "b", "b"},
+				[]string{"", "", ""},
+				[]string{"", "", ""},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// if the first thing permissivecsv encounters is an empty field
+			// followed by a terminator, it assumes that to be correct. All
+			// subsequent records are expected to also only have one field, and
+			// are truncated as necessary.
+			name:  "loitering empty field",
+			input: "\"\"\na,a,a\nb,b,b\nc,c,c",
+			result: [][]string{
+				[]string{""},
+				[]string{"a"},
+				[]string{"b"},
+				[]string{"c"},
+			},
+		},
+		{
+			// permissivecsv doesn't care about mixing terminators.
+			name:  "mixed terminators",
+			input: "a,a\nb,b\nc,c\r\nd,d\ne,e\n\rf,f",
+			result: [][]string{
+				[]string{"a", "a"},
+				[]string{"b", "b"},
+				[]string{"c", "c"},
+				[]string{"d", "d"},
+				[]string{"e", "e"},
+				[]string{"f", "f"},
+			},
+		},
+		{
+			// permissivecsv ignores terminators that are quoted
+			name:  "ignore quoted",
+			input: "a,a,a\n\"\n\",b,b\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"\n", "b", "b"},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// permissivecsv will nullify the values for all of a record's
+			// fields if it encounters a bare quote. This is the most
+			// consistent way to represent data that has been corrupted in this
+			// manner. permissivecsv's handling of bare quotes differs from
+			// the stdlib's csv.Reader. csv.Reader will concatenate all of a
+			// record's data into a single field if it encounters an unpaired
+			// quote. This results in a variation of data output per record that
+			// encounters this issue. permissivecsv instead blanks the data
+			// for the bad record, and reports the issue via Summary.
+			// This reduces the number of data variants output by the Scanner,
+			// while allowing the caller to still handle issues as they see fit.
+			name:  "bare quotes",
+			input: "a,a,a\n\"b\"b,b,b\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"", "", ""},
+				[]string{"c", "c", "c"},
+			},
+		},
+		{
+			// permissivecsv handles extraneous quotes the same way that it
+			// handles bare quotes, by nullifying the field values of the
+			// affected record.
+			name:  "extraneous quote",
+			input: "a,a,a\nb\"\"\"b,b,b\nc,c,c",
+			result: [][]string{
+				[]string{"a", "a", "a"},
+				[]string{"", "", ""},
+				[]string{"c", "c", "c"},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -735,6 +735,27 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:                "leading terminator",
+			data:                strings.NewReader("\n\na\nb\nc\nd"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 2,
+					UpperOffset: 4,
+					SegmentSize: 3,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 6,
+					UpperOffset: 8,
+					SegmentSize: 3,
+				},
+			},
+		},
+
 		// New Cases:
 		// These need to be added for Scan tests as well.
 		// leading terminators are ignored

@@ -102,6 +102,7 @@ type Scanner struct {
 	checkedForHeader               bool
 	splitter                       *linesplit.Splitter
 	leadingTerminatorCheckComplete bool
+	leadingBytesIgnored            int64
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
@@ -180,6 +181,7 @@ func (s *Scanner) Scan() bool {
 		s.scanner.Split(s.splitter.Split)
 		s.checkedForHeader = true
 		s.leadingTerminatorCheckComplete = false
+		s.leadingBytesIgnored = 0
 	} else {
 		s.firstRecord = nil
 		s.secondRecord = nil
@@ -223,6 +225,7 @@ func (s *Scanner) scan() bool {
 			more = s.scanner.Scan()
 			rawRecord = s.scanner.Text()
 			currentTerminator = s.splitter.CurrentTerminator()
+			s.leadingBytesIgnored += int64(len(currentTerminator))
 			continue
 		}
 		s.leadingTerminatorCheckComplete = true
@@ -478,13 +481,13 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	headerEvaluated := false
 	for s.Scan() {
 		currentTerminator := s.splitter.CurrentTerminator()
-		if !headerEvaluated && excludeHeader {
+		if !headerEvaluated {
 			headerEvaluated = true
-			if s.RecordIsHeader() {
-				t := s.scanner.Text()
-				lowerOffset = int64(len(t))
+			if excludeHeader && s.RecordIsHeader() {
+				lowerOffset = s.leadingBytesIgnored + int64(len(s.scanner.Text()))
 				continue
 			}
+			lowerOffset = s.leadingBytesIgnored
 		}
 
 		if recordsInCurrentSegment == n {
