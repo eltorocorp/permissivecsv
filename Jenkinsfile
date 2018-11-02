@@ -1,3 +1,9 @@
+def setCoverageBadge(goPath) {
+    def coverage = sh(script: "cd ${goPath} && cat coveragepct", returnStdout: true)
+    def coverageUri = "\'http://badges.awsp.eltoro.com?project=permissivecsv&item=coverage&value=${coverage}&color=yellow\'"
+    sh "curl -sX POST ${coverageUri}"
+}
+
 def setBuildStatusBadge(status, color) {
     def statusUri = "\'http://badges.awsp.eltoro.com?project=permissivecsv&item=build&value=${status}&color=${color}\'"
     sh "curl -sX POST ${statusUri}"
@@ -42,6 +48,8 @@ node {
             slackFailure()
             setBuildStatusBadge('failing', 'red')
             currentBuild.result = 'FAILURE'
-        } 
+        } finally {
+            setCoverageBadge(goPath)
+        }  
     }
 }

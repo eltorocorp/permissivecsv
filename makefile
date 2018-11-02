@@ -11,5 +11,5 @@ build:
 .PHONY: build
 
 test:
-	@go test ./...
+	@drygopher -d -e "/mocks,/interfaces,/cmd,/host,'iface$$','drygopher$$','types$$'" -s 0
 .PHONY: test
