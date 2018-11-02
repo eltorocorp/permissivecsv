@@ -44,8 +44,8 @@ func Test_Reader(t *testing.T) {
 		{
 			name:             "reader is not nil",
 			reader:           strings.NewReader(""),
-			expScans:         1,
-			expCurrentRecord: []string{""},
+			expScans:         0,
+			expCurrentRecord: []string{},
 		},
 		{
 			// If a reader reports an error, the scanner will stop after the
@@ -55,8 +55,8 @@ func Test_Reader(t *testing.T) {
 			// possible, permissivecsv considers this the end of the file.
 			name:             "reader returns an error",
 			reader:           BadReader(strings.NewReader("a\nb\nc")),
-			expScans:         1,
-			expCurrentRecord: []string{""},
+			expScans:         0,
+			expCurrentRecord: []string{},
 		},
 	}
 
@@ -85,7 +85,7 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 		{
 			name:   "single empty record",
 			input:  "",
-			result: [][]string{[]string{""}},
+			result: [][]string{},
 		},
 		{
 			name:   "single record",
@@ -133,20 +133,15 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			},
 		},
 		{
-			// permissivecsv respects dangling terminators, presuming that they
-			// imply empty records.
 			name:  "dangling terminator",
 			input: "a,a,a\nb,b,b\nc,c,c\n\n",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
 				[]string{"c", "c", "c"},
-				[]string{"", "", ""},
-				[]string{"", "", ""},
 			},
 		},
 		{
-			// permissivecsv ignore bare terminators at the top of the file
 			name:  "leading terminator",
 			input: "\r\n\r\n\r\n\r\na,a,a\r\nb,b,b\r\nc,c,c",
 			result: [][]string{
@@ -156,14 +151,11 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			},
 		},
 		{
-			// permissivecsv respects implied empty records
 			name:  "empty records",
 			input: "a,a,a\nb,b,b\n\n\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
-				[]string{"", "", ""},
-				[]string{"", "", ""},
 				[]string{"c", "c", "c"},
 			},
 		},
@@ -489,28 +481,14 @@ func Test_Partition(t *testing.T) {
 			data:                nil,
 			recordsPerPartition: 10,
 			excludeHeader:       false,
-			expPartitions: []*permissivecsv.Segment{
-				&permissivecsv.Segment{
-					Ordinal:     -1,
-					LowerOffset: -1,
-					UpperOffset: -1,
-					SegmentSize: -1,
-				},
-			},
+			expPartitions:       []*permissivecsv.Segment{},
 		},
 		{
 			name:                "empty file",
 			data:                strings.NewReader(""),
 			recordsPerPartition: 10,
 			excludeHeader:       false,
-			expPartitions: []*permissivecsv.Segment{
-				&permissivecsv.Segment{
-					Ordinal:     1,
-					LowerOffset: 0,
-					UpperOffset: 0,
-					SegmentSize: 0,
-				},
-			},
+			expPartitions:       []*permissivecsv.Segment{},
 		},
 		{
 			name:                "one byte long terminator",
@@ -522,19 +500,16 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 0,
 					UpperOffset: 6,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 8,
 					UpperOffset: 14,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 16,
 					UpperOffset: 22,
-					SegmentSize: 7,
 				},
 			},
 		},
@@ -548,19 +523,16 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 0,
 					UpperOffset: 7,
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 10,
 					UpperOffset: 17,
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 20,
 					UpperOffset: 27,
-					SegmentSize: 8,
 				},
 			},
 		},
@@ -574,25 +546,21 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 0,
 					UpperOffset: 6,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 8,
 					UpperOffset: 14,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 16,
 					UpperOffset: 22,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
 					LowerOffset: 24,
 					UpperOffset: 26,
-					SegmentSize: 3,
 				},
 			},
 		},
@@ -606,25 +574,21 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 0,
 					UpperOffset: 7,
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 10,
 					UpperOffset: 17,
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 20,
 					UpperOffset: 27,
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
 					LowerOffset: 30,
 					UpperOffset: 32,
-					SegmentSize: 3,
 				},
 			},
 		},
@@ -638,25 +602,21 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 0,
 					UpperOffset: 7,
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 9,
 					UpperOffset: 15,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 17,
 					UpperOffset: 23,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
 					LowerOffset: 25,
 					UpperOffset: 27,
-					SegmentSize: 3,
 				},
 			},
 		},
@@ -670,19 +630,11 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 0,
 					UpperOffset: 7,
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 9,
-					UpperOffset: 19,
-					SegmentSize: 11,
-				},
-				&permissivecsv.Segment{
-					Ordinal:     3,
-					LowerOffset: 21,
 					UpperOffset: 23,
-					SegmentSize: 3,
 				},
 			},
 		},
@@ -696,19 +648,16 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 4,
 					UpperOffset: 10,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 12,
 					UpperOffset: 18,
-					SegmentSize: 7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 20,
 					UpperOffset: 26,
-					SegmentSize: 7,
 				},
 			},
 		},
@@ -722,19 +671,16 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 5,  // c
 					UpperOffset: 12, // f
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 15, // g
 					UpperOffset: 22, // j
-					SegmentSize: 8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 25, // k
 					UpperOffset: 32, // n
-					SegmentSize: 8,
 				},
 			},
 		},
@@ -748,17 +694,27 @@ func Test_Partition(t *testing.T) {
 					Ordinal:     1,
 					LowerOffset: 2,
 					UpperOffset: 4,
-					SegmentSize: 3,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 6,
 					UpperOffset: 8,
-					SegmentSize: 3,
 				},
 			},
 		},
-
+		{
+			name:                "dangling terminator respected",
+			data:                strings.NewReader("a\nb\n\n\n"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					UpperOffset: 2,
+				},
+			},
+		},
 		// New Cases:
 		// trailing terminators are ignored
 		// empty records are respected

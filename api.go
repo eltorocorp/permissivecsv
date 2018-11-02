@@ -92,17 +92,15 @@ const (
 // replacements are made, the type of replacement, record number, and original
 // data are all immediately available via the Summary method.
 type Scanner struct {
-	headerCheck                    HeaderCheck
-	currentRecord                  []string
-	reader                         io.ReadSeeker
-	scanner                        *bufio.Scanner
-	expectedFieldCount             int
-	recordsScanned                 int64
-	scanSummary                    *ScanSummary
-	checkedForHeader               bool
-	splitter                       *linesplit.Splitter
-	leadingTerminatorCheckComplete bool
-	leadingBytesIgnored            int64
+	headerCheck        HeaderCheck
+	currentRecord      []string
+	reader             io.ReadSeeker
+	scanner            *bufio.Scanner
+	expectedFieldCount int
+	recordsScanned     int64
+	scanSummary        *ScanSummary
+	checkedForHeader   bool
+	splitter           *linesplit.Splitter
 
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
@@ -180,8 +178,7 @@ func (s *Scanner) Scan() bool {
 		s.scanner = bufio.NewScanner(s.reader)
 		s.scanner.Split(s.splitter.Split)
 		s.checkedForHeader = true
-		s.leadingTerminatorCheckComplete = false
-		s.leadingBytesIgnored = 0
+		s.bytesSkipped = 0
 	} else {
 		s.firstRecord = nil
 		s.secondRecord = nil
@@ -220,15 +217,15 @@ func (s *Scanner) scan() bool {
 
 	rawRecord := s.scanner.Text()
 	currentTerminator := s.splitter.CurrentTerminator()
-	for !s.leadingTerminatorCheckComplete && more {
-		if rawRecord == string(currentTerminator) {
-			more = s.scanner.Scan()
-			rawRecord = s.scanner.Text()
-			currentTerminator = s.splitter.CurrentTerminator()
-			s.leadingBytesIgnored += int64(len(currentTerminator))
-			continue
-		}
-		s.leadingTerminatorCheckComplete = true
+	for rawRecord == string(currentTerminator) && more {
+		more = s.scanner.Scan()
+		rawRecord = s.scanner.Text()
+		currentTerminator = s.splitter.CurrentTerminator()
+		continue
+	}
+
+	if rawRecord == "" && len(currentTerminator) == 0 {
+		return false
 	}
 
 	var trimmedRawRecord string
@@ -392,7 +389,6 @@ type Segment struct {
 	Ordinal     int64
 	LowerOffset int64
 	UpperOffset int64
-	SegmentSize int64
 }
 
 // Partition reads the full file and divides it into a series of partitions,
@@ -484,10 +480,10 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 		if !headerEvaluated {
 			headerEvaluated = true
 			if excludeHeader && s.RecordIsHeader() {
-				lowerOffset = s.leadingBytesIgnored + int64(len(s.scanner.Text()))
+				lowerOffset = int64(len(s.scanner.Text()))
 				continue
 			}
-			lowerOffset = s.leadingBytesIgnored
+			lowerOffset = 0
 		}
 
 		if recordsInCurrentSegment == n {
@@ -502,7 +498,6 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
 				UpperOffset: upperOffset - int64(1),
-				SegmentSize: int64(len(currentRawRecord) - len(previousTerminator)),
 			})
 			recordsInCurrentSegment = 0
 			currentRawRecord = ""
@@ -521,22 +516,8 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
 				UpperOffset: upperOffset - int64(len(s.splitter.CurrentTerminator())) - 1,
-				SegmentSize: int64(len(currentRawRecord) - len(s.splitter.CurrentTerminator())),
 			})
 	}
 
-	if len(segments) == 1 && s.scanner.Text() == "" {
-		segments[0].UpperOffset = 0
-	}
-
-	summary := s.Summary()
-	if summary.Err == ErrReaderIsNil {
-		segments = append(segments, &Segment{
-			Ordinal:     -1,
-			LowerOffset: -1,
-			UpperOffset: -1,
-			SegmentSize: -1,
-		})
-	}
 	return segments
 }
