@@ -178,7 +178,6 @@ func (s *Scanner) Scan() bool {
 		s.scanner = bufio.NewScanner(s.reader)
 		s.scanner.Split(s.splitter.Split)
 		s.checkedForHeader = true
-		s.bytesSkipped = 0
 	} else {
 		s.firstRecord = nil
 		s.secondRecord = nil
@@ -388,7 +387,7 @@ func (s *Scanner) RecordIsHeader() bool {
 type Segment struct {
 	Ordinal     int64
 	LowerOffset int64
-	UpperOffset int64
+	Length      int64
 }
 
 // Partition reads the full file and divides it into a series of partitions,
@@ -467,16 +466,13 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 	var (
 		ordinal     int64
 		lowerOffset int64
-		upperOffset int64
 	)
 	s.Reset()
 	segments := []*Segment{}
+	headerEvaluated := false
 	currentRawRecord := ""
 	recordsInCurrentSegment := 0
-	previousTerminator := []byte(nil)
-	headerEvaluated := false
 	for s.Scan() {
-		currentTerminator := s.splitter.CurrentTerminator()
 		if !headerEvaluated {
 			headerEvaluated = true
 			if excludeHeader && s.RecordIsHeader() {
@@ -487,25 +483,17 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 		}
 
 		if recordsInCurrentSegment == n {
-			// if we're here, the current segment does not have room for the
-			// record that was just loaded by Scan. So, we flush this segment
-			// and prepare a new one. The unflushed segment currently contains
-			// data from the past calls Scan. Thus, we have to calculate offsets
-			// based on the terminator from the last call to Scan, not the
-			// terminator from the current call to Scan.
 			ordinal++
 			segments = append(segments, &Segment{
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
-				UpperOffset: upperOffset - int64(1),
+				Length:      int64(len(currentRawRecord)),
 			})
 			recordsInCurrentSegment = 0
+			lowerOffset += int64(len(currentRawRecord))
 			currentRawRecord = ""
-			lowerOffset = upperOffset + int64(len(previousTerminator))
 		}
 		currentRawRecord += s.scanner.Text()
-		upperOffset = lowerOffset + int64(len(currentRawRecord)-len(currentTerminator))
-		previousTerminator = currentTerminator
 		recordsInCurrentSegment++
 	}
 
@@ -515,7 +503,7 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			&Segment{
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
-				UpperOffset: upperOffset - int64(len(s.splitter.CurrentTerminator())) - 1,
+				Length:      int64(len(currentRawRecord)),
 			})
 	}
 

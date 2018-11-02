@@ -499,17 +499,17 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 6,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 8,
-					UpperOffset: 14,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 16,
-					UpperOffset: 22,
+					Length:      7,
 				},
 			},
 		},
@@ -522,17 +522,17 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 7,
+					Length:      10,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 10,
-					UpperOffset: 17,
+					Length:      10,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 20,
-					UpperOffset: 27,
+					Length:      8,
 				},
 			},
 		},
@@ -545,22 +545,22 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 6,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 8,
-					UpperOffset: 14,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 16,
-					UpperOffset: 22,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
 					LowerOffset: 24,
-					UpperOffset: 26,
+					Length:      3,
 				},
 			},
 		},
@@ -573,22 +573,22 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 7,
+					Length:      10,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 10,
-					UpperOffset: 17,
+					Length:      10,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 20,
-					UpperOffset: 27,
+					Length:      10,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
 					LowerOffset: 30,
-					UpperOffset: 32,
+					Length:      3,
 				},
 			},
 		},
@@ -601,40 +601,40 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 7,
+					Length:      9,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 9,
-					UpperOffset: 15,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 17,
-					UpperOffset: 23,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     4,
 					LowerOffset: 25,
-					UpperOffset: 27,
+					Length:      3,
 				},
 			},
 		},
 		{
 			name:                "variable record lengths",
-			data:                strings.NewReader("a,b,c\ndd\nee,ff,gg,h\n\ni,j"),
+			data:                strings.NewReader("a,b,c\ndd\nee,ff,gg,h\ni,j"),
 			recordsPerPartition: 2,
 			excludeHeader:       false,
 			expPartitions: []*permissivecsv.Segment{
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 7,
+					Length:      9,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 9,
-					UpperOffset: 23,
+					Length:      14,
 				},
 			},
 		},
@@ -647,17 +647,17 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 4,
-					UpperOffset: 10,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
 					LowerOffset: 12,
-					UpperOffset: 18,
+					Length:      8,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
 					LowerOffset: 20,
-					UpperOffset: 26,
+					Length:      7,
 				},
 			},
 		},
@@ -669,41 +669,41 @@ func Test_Partition(t *testing.T) {
 			expPartitions: []*permissivecsv.Segment{
 				&permissivecsv.Segment{
 					Ordinal:     1,
-					LowerOffset: 5,  // c
-					UpperOffset: 12, // f
+					LowerOffset: 5,
+					Length:      10,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
-					LowerOffset: 15, // g
-					UpperOffset: 22, // j
+					LowerOffset: 15,
+					Length:      10,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     3,
-					LowerOffset: 25, // k
-					UpperOffset: 32, // n
+					LowerOffset: 25,
+					Length:      8,
 				},
 			},
 		},
 		{
-			name:                "leading terminator",
-			data:                strings.NewReader("\n\na\nb\nc\nd"),
+			name:                "leading terminators",
+			data:                strings.NewReader("\n\n\na\nb\nc\nd"),
 			recordsPerPartition: 2,
 			excludeHeader:       false,
 			expPartitions: []*permissivecsv.Segment{
 				&permissivecsv.Segment{
 					Ordinal:     1,
-					LowerOffset: 2,
-					UpperOffset: 4,
+					LowerOffset: 0,
+					Length:      7,
 				},
 				&permissivecsv.Segment{
 					Ordinal:     2,
-					LowerOffset: 6,
-					UpperOffset: 8,
+					LowerOffset: 7,
+					Length:      3,
 				},
 			},
 		},
 		{
-			name:                "dangling terminator respected",
+			name:                "dangling terminators",
 			data:                strings.NewReader("a\nb\n\n\n"),
 			recordsPerPartition: 2,
 			excludeHeader:       false,
@@ -711,7 +711,7 @@ func Test_Partition(t *testing.T) {
 				&permissivecsv.Segment{
 					Ordinal:     1,
 					LowerOffset: 0,
-					UpperOffset: 2,
+					Length:      6,
 				},
 			},
 		},
