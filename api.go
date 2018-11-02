@@ -102,6 +102,14 @@ type Scanner struct {
 	checkedForHeader   bool
 	splitter           *linesplit.Splitter
 
+	// bytesUnclaimed exists solely for the Partition method.
+	// It represents the number of bytes the scan method has ignored while
+	// skipping superfluous terminators.
+	// The partition method resets this value each time it accounts for
+	// ("claims") one or more bytes while constructing segments offsets and
+	// lengths.
+	bytesUnclaimed int64
+
 	// these values can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
 	firstRecord  []string
@@ -178,6 +186,7 @@ func (s *Scanner) Scan() bool {
 		s.scanner = bufio.NewScanner(s.reader)
 		s.scanner.Split(s.splitter.Split)
 		s.checkedForHeader = true
+		s.bytesUnclaimed = 0
 	} else {
 		s.firstRecord = nil
 		s.secondRecord = nil
@@ -217,6 +226,7 @@ func (s *Scanner) scan() bool {
 	rawRecord := s.scanner.Text()
 	currentTerminator := s.splitter.CurrentTerminator()
 	for rawRecord == string(currentTerminator) && more {
+		s.bytesUnclaimed += int64(len(currentTerminator))
 		more = s.scanner.Scan()
 		rawRecord = s.scanner.Text()
 		currentTerminator = s.splitter.CurrentTerminator()
@@ -476,7 +486,8 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 		if !headerEvaluated {
 			headerEvaluated = true
 			if excludeHeader && s.RecordIsHeader() {
-				lowerOffset = int64(len(s.scanner.Text()))
+				lowerOffset = int64(len(s.scanner.Text())) + s.bytesUnclaimed
+				s.bytesUnclaimed = 0
 				continue
 			}
 			lowerOffset = 0
@@ -487,10 +498,11 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			segments = append(segments, &Segment{
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
-				Length:      int64(len(currentRawRecord)),
+				Length:      int64(len(currentRawRecord)) + s.bytesUnclaimed,
 			})
+			lowerOffset += int64(len(currentRawRecord)) + s.bytesUnclaimed
 			recordsInCurrentSegment = 0
-			lowerOffset += int64(len(currentRawRecord))
+			s.bytesUnclaimed = 0
 			currentRawRecord = ""
 		}
 		currentRawRecord += s.scanner.Text()
@@ -503,8 +515,9 @@ func (s *Scanner) Partition(n int, excludeHeader bool) []*Segment {
 			&Segment{
 				Ordinal:     ordinal,
 				LowerOffset: lowerOffset,
-				Length:      int64(len(currentRawRecord)),
+				Length:      int64(len(currentRawRecord)) + s.bytesUnclaimed,
 			})
+		s.bytesUnclaimed = 0
 	}
 
 	return segments

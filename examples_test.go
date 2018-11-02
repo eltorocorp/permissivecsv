@@ -56,14 +56,12 @@ func ExampleScanner_Partition() {
 	//   {
 	//     "Ordinal": 1,
 	//     "LowerOffset": 6,
-	//     "UpperOffset": 16,
-	//     "SegmentSize": 11
+	//     "Length": 12
 	//   },
 	//   {
 	//     "Ordinal": 2,
 	//     "LowerOffset": 18,
-	//     "UpperOffset": 22,
-	//     "SegmentSize": 5
+	//     "Length": 6
 	//   }
 	// ]
 }
