@@ -37,9 +37,8 @@ const (
 	AltPaddedRecord = "padded record"
 )
 
-// Scanner provides facility for permissively reading CSV input. Successive
-// calls to the Scan method will step through the records of a file, skipping
-// terminator bytes between each record.
+// Scanner provides methods for permissively reading CSV input. Successive
+// calls to the Scan method will step through the records of a file.
 //
 // Terminators (line endings) can be any (or a mix) of DOS (\r\n), inverted DOS
 // (\n\r), unix (\n), or carriage return (\r) tokens.  When scanning, the
@@ -65,7 +64,9 @@ const (
 // priority to tokens that are more common. Thus DOS has higher priority than
 // inverted DOS because inverted DOS is a non-standard terminator. Similarly
 // between unix and carriage return, unix has priority, as bare carriage returns
-// are a non-standard terminator.
+// are a non-standard terminator. Finally, since carriage returns are quite
+// rare as terminators, a carriage return will only be selected if there are
+// no other possible terminators present in the current search space.
 //
 // The preceding terminator detection process is repeated for each record that
 // is scanned.
@@ -158,13 +159,18 @@ func NewScanner(r io.ReadSeeker, headerCheck HeaderCheck) *Scanner {
 	return s
 }
 
-// Scan advances the scanner to the next record, which will then be available
+// Scan advances the scanner to the next non-empty record, which is then available
 // via the CurrentRecord method. Scan returns false when it reaches the end
 // of the file. Once scanning is complete, subsequent scans will continue to
 // return false until the Reset method is called.
 //
+// Scan skips what it considers "empty records". An empty record occurs any time
+// one or more terminators are present with no surrounding data.
+//
 // If the underlaying Reader is nil, Scan will return false on the first call.
-// In all other cases, Scan will return true on the first call.
+// In all other cases, Scan will return true on the first call. This is done
+// to allow the caller to explicitely inspect the resulting record (even if
+// said record is empty).
 func (s *Scanner) Scan() bool {
 	if !s.checkedForHeader {
 		more := s.scan()
@@ -401,62 +407,15 @@ type Segment struct {
 }
 
 // Partition reads the full file and divides it into a series of partitions,
-// each of which contains n records. All partitions are guaranteed to contain at
-// least n records, except for the final partition, which may contain a
-// smaller number of records.
+// each of which contains n non-empty records. All partitions are guaranteed to
+// contain at least n non-empty records, except for the final partition, which
+// may contain a smaller number of records.
 //
 // Each partition is represented by a Segment, which contains an Ordinal (an
 // integer value representing the segment's placement relative to other
-// segments), the lower byte offset where the partition starts, the upper byte
-// offset where the partition ends, and the segment size, which is the
-// partition length in bytes. If the file being read is empty (0 bytes),
-// Partition will return a single empty segment with a length of zero, and
-// both offsets set to -1.
-//
-// To maintain record consistency across segments, the byte offsets
-// for a segment typically exclude its trailing terminator. Stripping the
-// trailing terminator from the segment ensures that each segment can be properly
-// interpreted as an independent file without having to make potentially
-// erronious assumptions about implied empty records. In cases where a
-// leading or trailing terminator implies that an empty record exists, the
-// terminator will be retained. The following examples demonstrate how these
-// rules are applied:
-//
-//	Terminators between segments are excluded from each segments byte-range.
-//	----------------------------------------------------------------------------
-//	Example 1: 6 records, 2 records per segment
-//	Raw Data : 1\n2\n3\n4\n5\n6
-//	Segment 1: 1\n2 <-- \n following record 2 is ommitted
-//	Segment 2: 3\n4 <-- \n following record 4 is ommitted
-//	Segment 3: 5\n6
-//
-//	Leading terminators are retained, as permissivecsv assumes they imply the
-//	file starts with a record with a single empty field.
-//	----------------------------------------------------------------------------
-//	Example 2: 6 records, 2 records per segment
-//	Raw Data :  \n2\n3\n4\n5\n6
-//	Segment 1:  \n2 <-- record 1 is implied to be an empty record.
-//	Segment 2: 3\n4
-//	Segment 3: 5\n6
-//
-//	Trailing terminators are included if an empty record is implied.
-//	----------------------------------------------------------------------------
-//	Example 3: 6 records, 2 records per segment
-//	Raw Data : 1\n2\n\n4\n5\n
-//	Segment 1: 1\n2
-//	Segment 2:  \n4 <-- record 3 is implied as an empty record
-//	Segment 3: 5\n  <-- record 6 is implied as an empty record
-//
-//  Terminators are retained for empty records.
-//	----------------------------------------------------------------------------
-//	Example 4: 6 records, 1 records per segment
-//	Raw Data : 1\n\n3\n\n5\n6
-//	Segment 1: 1
-//	Segment 2: \n  <-- record 2 is implied as an empty record
-//	Segment 3: 3
-//	Segment 4: \n  <-- record 4 is implied as an empty record
-//	Segment 5: 5
-//	Segment 6: 6
+// segments), the lower byte offset where the partition starts, and the segment
+// lengh, which is the partition size in bytes. If the file being read is empty
+// (0 bytes), Partition will return an empty slice of segments.
 //
 // If excludeHeader is true, Partition will check if a header exists. If a
 // header is detected, the first Segment will ignore the header, and the

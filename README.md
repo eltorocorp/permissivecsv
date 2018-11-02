@@ -23,7 +23,7 @@ When scanning a search space for a terminator, PermissiveCSV will select the fir
 1) DOS (`\r\n`)
 1) Inverted DOS (`\n\r`)
 1) unix (`\n`)
-1) Carriage Return (`\r`)
+1) Carriage Return (`\r`) - a bare carriage return will only be selected if no other possible terminator exists within the current search space (even if the carriage return is found earlier in the space than other terminators).
 
 *Terminator evaluation order*
 
@@ -46,6 +46,8 @@ When scanning a search space for a terminator, PermissiveCSV will select the fir
    - Leading terminators are one or more terminator token at the top of a file with no data present between tokens.
  - Dangling terminators are ignored.
    - Dangling terminators are one or more terminator token at the end of a file with no apparent data between tokens. 
+ - Stuttering terminators are ignored.
+   - Stuttering terminators are two or more successive terminators with no intermediate data.
  
 Inconsistent-Record-Length Handling
 -----------------------------------
