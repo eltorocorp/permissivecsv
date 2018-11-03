@@ -3,7 +3,7 @@ local: build test
 prebuild:
 	@echo Preparing build tooling...
 	@go get -u github.com/golang/dep/cmd/dep
-	@go install -i github.com/eltorocorp/drygopher
+	@go get -u github.com/eltorocorp/drygopher/drygopher
 .PHONY: prebuild
 
 build:
