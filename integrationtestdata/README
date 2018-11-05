@@ -1,0 +1,8 @@
+
+The files in this directory have a one to one correspondence with integration
+tests in integration_test.go.
+
+The data in these files may need to be edited through a hex editor or similar
+tool that grants control over non-standard control character use. In other words
+these files probably won't look right in a standard csv editor, so just edit
+them in a hex editor.
