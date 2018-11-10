@@ -80,6 +80,16 @@ func Test_IndexNonQuoted(t *testing.T) {
 			substr:        "\r\n",
 			expectedIndex: 5,
 		},
+		{
+			// In this circumstance, IndexNonQuoted can't guarantee that
+			// the terminator isn't quoted, as it is preceded by an extraneous
+			// quote (a quote that isn't closed). In this case, IndexNonQuoted
+			// treats the terminator as though it is quoted.
+			name:          "extraneous quotes",
+			s:             "b\"\"\"b,b,b\nc,c,c",
+			substr:        "\n",
+			expectedIndex: -1,
+		},
 	}
 
 	for _, test := range tests {

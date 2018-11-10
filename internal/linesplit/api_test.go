@@ -151,6 +151,43 @@ func Test_Split(t *testing.T) {
 			expErr:               nil,
 			expCurrentTerminator: []byte{13, 10},
 		},
+		// If there are an even number of extraneous quotes before any terminator
+		// they will be identified as such, and the terminator will be found.
+		{
+			name:                 "extraneous quotes (even)",
+			data:                 []byte("b\"\"b,b,b\nc,c,c"),
+			atEOF:                true,
+			expAdvance:           9,
+			expToken:             []byte("b\"\"b,b,b\n"),
+			expErr:               nil,
+			expCurrentTerminator: []byte{10},
+		},
+		// If there are an odd number of extraneous quotes before any terminator,
+		// and we are at the end of the file, linesplit can't trust any
+		// terminator it finds after the last quote, as it doesn't know if it
+		// is "quoted" or not. Instead, the remaineder of the text is returned
+		// in full.
+		{
+			name:                 "extraneous quotes (odd at EOF)",
+			data:                 []byte("b\"\"\"b,b,b\nc,c,c"),
+			atEOF:                true,
+			expAdvance:           0,
+			expToken:             []byte("b\"\"\"b,b,b\nc,c,c"),
+			expErr:               bufio.ErrFinalToken,
+			expCurrentTerminator: []byte{},
+		},
+		// If there are an odd number of extraneous quotes before any terminator
+		// and we are not at the end of the file, linesplit will request to have
+		// the search space increased, in an effort to idenfity a missing quote.
+		{
+			name:                 "extraneous quotes (odd not EOF)",
+			data:                 []byte("b\"\"\"b,b,b\nc,c,c"),
+			atEOF:                false,
+			expAdvance:           0,
+			expToken:             nil,
+			expErr:               nil,
+			expCurrentTerminator: nil,
+		},
 	}
 
 	for _, test := range tests {

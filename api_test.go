@@ -221,7 +221,7 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			// handles bare quotes, by nullifying the field values of the
 			// affected record.
 			name:  "extraneous quote",
-			input: "a,a,a\nb\"\"\"b,b,b\nc,c,c",
+			input: "a,a,a\nb\"\"b,b,b\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"", "", ""},
