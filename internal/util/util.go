@@ -1,49 +1,28 @@
 package util
 
 import (
-	"regexp"
 	"strings"
 )
 
 // IndexNonQuoted returns the index of the first non-quoted occurrence of
 // substr in s.
 func IndexNonQuoted(s, substr string) int {
-	substr = regexp.QuoteMeta(substr)
+	quoteCount := 0
+	for i, c := range s {
+		if i+len(substr) > len(s) {
+			break
+		}
 
-	re := regexp.MustCompile(substr)
-	matches := re.FindAllStringIndex(s, -1)
+		if c == 34 {
+			quoteCount++
+		}
 
-	if len(matches) == 0 {
-		return -1
-	}
-
-	reQuoted := regexp.MustCompile("\".*" + substr + ".*\"")
-	matchesQuoted := reQuoted.FindAllStringIndex(s, -1)
-
-	if len(matchesQuoted) == 0 {
-		return matches[0][0]
-	}
-
-	if len(matchesQuoted) == len(matches) {
-		return -1
-	}
-
-	for i := 0; i < len(matchesQuoted); i++ {
-		matchesQuoted[i][0]++
-		matchesQuoted[i][1]--
-	}
-
-	for i := 0; i < len(matches); i++ {
-		for q := 0; q < len(matchesQuoted); q++ {
-			if matches[i][0] < matchesQuoted[q][0] && matches[i][1] < matchesQuoted[q][1] ||
-				matches[i][0] > matchesQuoted[q][0] && matches[i][1] > matchesQuoted[q][1] {
-				return matches[i][0]
-			}
+		if quoteCount%2 == 0 && s[i:i+len(substr)] == substr {
+			return i
 		}
 	}
 
 	return -1
-
 }
 
 const (

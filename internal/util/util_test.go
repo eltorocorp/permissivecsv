@@ -63,9 +63,21 @@ func Test_IndexNonQuoted(t *testing.T) {
 			expectedIndex: 8,
 		},
 		{
-			name:          "terminator between quoted fields",
+			name:          "unix terminator between quoted fields",
 			s:             "\"AAA\"\n\"AAA\"",
 			substr:        "\n",
+			expectedIndex: 5,
+		},
+		{
+			name:          "dos terminator between quoted fields",
+			s:             "\"AAA\"\r\n\"AAA\"",
+			substr:        "\r\n",
+			expectedIndex: 5,
+		},
+		{
+			name:          "dos terminator at end",
+			s:             "\"AAA\"\r\n",
+			substr:        "\r\n",
 			expectedIndex: 5,
 		},
 	}
