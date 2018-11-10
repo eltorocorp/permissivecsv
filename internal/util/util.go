@@ -1,19 +1,28 @@
 package util
 
 import (
+	"bytes"
 	"strings"
 )
+
+const quoteChar = 34
 
 // IndexNonQuoted returns the index of the first non-quoted occurrence of
 // substr in s.
 func IndexNonQuoted(s, substr string) int {
+	// important performance path: only do an in depth check if s contains
+	// quote characters, otherwise, just return the first occurence of substr.
+	if !bytes.ContainsRune([]byte(s), quoteChar) {
+		return strings.Index(s, substr)
+	}
+
 	quoteCount := 0
 	for i, c := range s {
 		if i+len(substr) > len(s) {
 			break
 		}
 
-		if c == 34 {
+		if c == quoteChar {
 			quoteCount++
 		}
 
