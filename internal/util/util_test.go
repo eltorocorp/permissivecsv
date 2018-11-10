@@ -62,6 +62,12 @@ func Test_IndexNonQuoted(t *testing.T) {
 			substr:        "\n",
 			expectedIndex: 8,
 		},
+		{
+			name:          "terminator between quoted fields",
+			s:             "\"AAA\"\n\"AAA\"",
+			substr:        "\n",
+			expectedIndex: 5,
+		},
 	}
 
 	for _, test := range tests {
