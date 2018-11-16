@@ -95,7 +95,7 @@ const (
 type Scanner struct {
 	headerCheck        HeaderCheck
 	currentRecord      []string
-	reader             io.ReadSeeker
+	reader             io.Reader
 	scanner            *bufio.Scanner
 	expectedFieldCount int
 	recordsScanned     int64
@@ -111,10 +111,9 @@ type Scanner struct {
 	// lengths.
 	bytesUnclaimed int64
 
-	// these values can only be non-nil the first time Scan is called
+	// the value can only be non-nil the first time Scan is called
 	// and will be nil for all subsequent calls.
-	firstRecord  []string
-	secondRecord []string
+	firstRecord []string
 }
 
 // HeaderCheck is a function that evaluates whether or not firstRecord is
@@ -126,28 +125,21 @@ type Scanner struct {
 //  - Scan has not been called.
 //  - The file is empty.
 //  - The Scanner has advanced beyond the first record.
-//
-// secondRecord is the second record of the file.
-// secondRecord will be nil in the following conditions:
-//  - Scan has not been called
-//  - The file is empty.
-//  - The Scanner has advanced beyond the first record.
-//  - The file does not have a second record.
-type HeaderCheck func(firstRecord, secondRecord []string) bool
+type HeaderCheck func(firstRecord []string) bool
 
 // HeaderCheckAssumeNoHeader is a HeaderCheck that instructs the RecordIsHeader
 // method to report that no header exists for the file being scanned.
-var HeaderCheckAssumeNoHeader HeaderCheck = func(firstRecord, secondRecod []string) bool {
+var HeaderCheckAssumeNoHeader HeaderCheck = func(firstRecord []string) bool {
 	return false
 }
 
 // HeaderCheckAssumeHeaderExists returns true unless firstRecord is nil.
-var HeaderCheckAssumeHeaderExists HeaderCheck = func(firstRecord, secondRecod []string) bool {
+var HeaderCheckAssumeHeaderExists HeaderCheck = func(firstRecord []string) bool {
 	return firstRecord != nil
 }
 
 // NewScanner returns a new Scanner to read from r.
-func NewScanner(r io.ReadSeeker, headerCheck HeaderCheck) *Scanner {
+func NewScanner(r io.Reader, headerCheck HeaderCheck) *Scanner {
 	internalScanner := bufio.NewScanner(r)
 	s := &Scanner{
 		headerCheck: headerCheck,
@@ -172,35 +164,6 @@ func NewScanner(r io.ReadSeeker, headerCheck HeaderCheck) *Scanner {
 // to allow the caller to explicitely inspect the resulting record (even if
 // said record is empty).
 func (s *Scanner) Scan() bool {
-	if !s.checkedForHeader {
-		more := s.scan()
-		s.firstRecord = make([]string, len(s.currentRecord))
-		copy(s.firstRecord, s.currentRecord)
-		if more {
-			s.scan()
-			if !s.Summary().EOF {
-				s.secondRecord = make([]string, len(s.currentRecord))
-				copy(s.secondRecord, s.currentRecord)
-			}
-		}
-		s.recordsScanned = 0
-		s.currentRecord = nil
-		s.scanSummary = nil
-		if s.reader != nil {
-			s.reader.Seek(0, io.SeekStart)
-		}
-		s.scanner = bufio.NewScanner(s.reader)
-		s.scanner.Split(s.splitter.Split)
-		s.checkedForHeader = true
-		s.bytesUnclaimed = 0
-	} else {
-		s.firstRecord = nil
-		s.secondRecord = nil
-	}
-	return s.scan()
-}
-
-func (s *Scanner) scan() bool {
 	var (
 		extraneousQuoteEncountered = false
 		bareQuoteEncountered       = false
@@ -293,6 +256,12 @@ func (s *Scanner) scan() bool {
 	}
 	s.currentRecord = record
 
+	if s.recordsScanned == 1 {
+		s.firstRecord = record
+	} else {
+		s.firstRecord = nil
+	}
+
 	if extraneousQuoteEncountered {
 		s.appendAlteration(trimmedRawRecord, record, AltExtraneousQuote)
 	} else if bareQuoteEncountered {
@@ -316,12 +285,11 @@ func (s *Scanner) appendAlteration(originalText string, record []string, descrip
 	})
 }
 
-// Reset sets the Scanner back to the top of the file, and clears any summary
-// data that any previous calls to Scan may have generated.
+// Reset sets the Scanner and clears any summary data that any previous calls to
+// Scan may have generated. Note that since Scanner is based on a Reader, it
+// is necessary for the consumer to verify the position in the byte stream
+// from which the Scanner will read.
 func (s *Scanner) Reset() {
-	if s.reader != nil {
-		s.reader.Seek(0, io.SeekStart)
-	}
 	s = NewScanner(s.reader, s.headerCheck)
 }
 
@@ -395,7 +363,7 @@ func (s *Scanner) Summary() *ScanSummary {
 // calling the HeaderCheck callback which was supplied to NewScanner when the
 // Scanner was instantiated.
 func (s *Scanner) RecordIsHeader() bool {
-	return s.headerCheck(s.firstRecord, s.secondRecord)
+	return s.headerCheck(s.firstRecord)
 }
 
 // Segment represents a byte range within a file that contains a subset of

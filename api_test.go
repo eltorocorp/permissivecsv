@@ -14,7 +14,7 @@ import (
 var ErrReader = errors.New("arbitrary reader error")
 
 // BadReader returns ErrReader on the first Read call.
-func BadReader(r io.ReadSeeker) io.ReadSeeker { return &badReader{r} }
+func BadReader(r io.ReadSeeker) io.Reader { return &badReader{r} }
 
 type badReader struct {
 	r io.ReadSeeker
@@ -24,14 +24,10 @@ func (r *badReader) Read(p []byte) (int, error) {
 	return 0, ErrReader
 }
 
-func (r *badReader) Seek(offset int64, whence int) (int64, error) {
-	return 0, nil
-}
-
 func Test_Reader(t *testing.T) {
 	tests := []struct {
 		name             string
-		reader           io.ReadSeeker
+		reader           io.Reader
 		expScans         int
 		expCurrentRecord []string
 	}{
@@ -396,42 +392,30 @@ func Test_HeaderCheckCallback(t *testing.T) {
 		expSecondRecord []string
 	}{
 		{
-			name:            "nils before Scan",
-			data:            "a,b,c\nd,e,f\ng,h,i",
-			scanLimit:       0,
-			expFirstRecord:  nil,
-			expSecondRecord: nil,
+			name:           "nils before Scan",
+			data:           "a,b,c\nd,e,f\ng,h,i",
+			scanLimit:      0,
+			expFirstRecord: nil,
 		},
 		{
-			name:            "1st and 2nd correct on first Scan",
-			data:            "a,b,c\nd,e,f\ng,h,i",
-			scanLimit:       1,
-			expFirstRecord:  []string{"a", "b", "c"},
-			expSecondRecord: []string{"d", "e", "f"},
+			name:           "1st correct on first Scan",
+			data:           "a,b,c\nd,e,f\ng,h,i",
+			scanLimit:      1,
+			expFirstRecord: []string{"a", "b", "c"},
 		},
 		{
-			name:            "scan advanced beyond first record",
-			data:            "a,b,c\nd,e,f\ng,h,i",
-			scanLimit:       -1,
-			expFirstRecord:  nil,
-			expSecondRecord: nil,
-		},
-		{
-			name:            "2nd nil if no second record",
-			data:            "x,y,z",
-			scanLimit:       1,
-			expFirstRecord:  []string{"x", "y", "z"},
-			expSecondRecord: nil,
+			name:           "scan advanced beyond first record",
+			data:           "a,b,c\nd,e,f\ng,h,i",
+			scanLimit:      -1,
+			expFirstRecord: nil,
 		},
 	}
 
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
 			var actualFirstRecord []string
-			var actualSecondRecord []string
-			headerCheck := func(firstRecord, secondRecord []string) bool {
+			headerCheck := func(firstRecord []string) bool {
 				actualFirstRecord = firstRecord
-				actualSecondRecord = secondRecord
 				return false
 			}
 			r := strings.NewReader(test.data)
@@ -453,12 +437,6 @@ func Test_HeaderCheckCallback(t *testing.T) {
 				assert.Nil(t, actualFirstRecord, "expected first record to be nil")
 			} else {
 				assert.Equal(t, test.expFirstRecord, actualFirstRecord)
-			}
-
-			if test.expSecondRecord == nil {
-				assert.Nil(t, actualSecondRecord, "expected second record to be nil")
-			} else {
-				assert.Equal(t, test.expSecondRecord, actualSecondRecord)
 			}
 		}
 		t.Run(test.name, testFn)

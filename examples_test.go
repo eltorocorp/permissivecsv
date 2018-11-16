@@ -90,29 +90,19 @@ func ExampleScanner_RecordIsHeader_assumeNoHeader() {
 
 // This example demonstrates implementing custom header detection logic.
 // The example shows how to properly check for nil conditions, and how the first
-// two records of a file can be compared when making a determination about if
+// record of a file can be evaluated when making a determination about if
 // the first record is a header. This is a fairly trivial example of header
 // detection. Review the HeaderCheck docs for a full list of implementation
 // considerations.
 func ExampleScanner_RecordIsHeader_customDetection() {
-	headerCheck := func(firstRecord, secondRecord []string) bool {
+	headerCheck := func(firstRecord []string) bool {
 		// firstRecord will be nil if Scan has not been called, if the file is
 		// empty, or the Scanner has advanced beyond the first record.
 		if firstRecord == nil {
 			return false
 		}
 
-		// secondRecord will be nil if the file only contains one record.
-		// (Additionally, secondRecord can also be nil for all of the same
-		// reasons that firstRecord can be nil.)
-		if secondRecord == nil {
-			return true
-		}
-
-		// If the value of the first field of the first record doesn't match the
-		// the value of the first field of the second record, assume a header
-		// is present.
-		return firstRecord[0] != secondRecord[0]
+		return firstRecord[0] == "a"
 	}
 
 	data := strings.NewReader("a,b,c\nd,e,f")
