@@ -129,8 +129,8 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			},
 		},
 		{
-			name:  "dangling terminator",
-			input: "a,a,a\nb,b,b\nc,c,c\n\n",
+			name:  "dangling terminators",
+			input: "a,a,a\nb,b,b\nc,c,c\n\n\n\n",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
@@ -138,8 +138,8 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 			},
 		},
 		{
-			name:  "leading terminator",
-			input: "\r\n\r\n\r\n\r\na,a,a\r\nb,b,b\r\nc,c,c",
+			name:  "leading terminators",
+			input: "\r\n\r\n\r\n\r\n\r\n\r\na,a,a\r\nb,b,b\r\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
@@ -148,7 +148,7 @@ func Test_ScanAndCurrentRecord(t *testing.T) {
 		},
 		{
 			name:  "empty records",
-			input: "a,a,a\nb,b,b\n\n\nc,c,c",
+			input: "a,a,a\nb,b,b\n\n\n\n\nc,c,c",
 			result: [][]string{
 				[]string{"a", "a", "a"},
 				[]string{"b", "b", "b"},
@@ -693,9 +693,24 @@ func Test_Partition(t *testing.T) {
 				},
 			},
 		},
-		// New Cases:
-		// trailing terminators are ignored
-		// empty records are respected
+		{
+			name:                "empty records",
+			data:                strings.NewReader("a\nb\n\n\nc"),
+			recordsPerPartition: 2,
+			excludeHeader:       false,
+			expPartitions: []*permissivecsv.Segment{
+				&permissivecsv.Segment{
+					Ordinal:     1,
+					LowerOffset: 0,
+					Length:      6,
+				},
+				&permissivecsv.Segment{
+					Ordinal:     2,
+					LowerOffset: 6,
+					Length:      1,
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		testFn := func(t *testing.T) {
