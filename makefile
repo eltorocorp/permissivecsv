@@ -7,9 +7,9 @@ prebuild:
 
 build:
 	@echo Updating dependencies...
-	@go mod tidy -v
+	@GO111MODULE=on go mod tidy -v
 .PHONY: build
 
 test:
-	@drygopher -d -e "/mocks,/interfaces,/cmd,/host,'iface$$','drygopher$$','types$$'" -s 0
+	@GO111MODULE=on drygopher -d -e "/mocks,/interfaces,/cmd,/host,'iface$$','drygopher$$','types$$'" -s 0
 .PHONY: test
