@@ -21,7 +21,7 @@ def slackFailure(){
 
 node {
     String goPath = "/go/src/github.com/eltorocorp/permissivecsv"
-    docker.image("golang:1.10").inside("-v ${pwd()}:${goPath} -u root") {
+    docker.image("golang:1.11").inside("-v ${pwd()}:${goPath} -u root") {
         try {
             stage('Pre-Build') {
                 setBuildStatusBadge('pending', 'blue')

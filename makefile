@@ -2,13 +2,12 @@ local: build test
 
 prebuild:
 	@echo Preparing build tooling...
-	@go get -u github.com/golang/dep/cmd/dep
 	@go get -u github.com/eltorocorp/drygopher/drygopher
 .PHONY: prebuild
 
 build:
 	@echo Updating dependencies...
-	@dep ensure
+	@go mod tidy -v
 .PHONY: build
 
 test:
